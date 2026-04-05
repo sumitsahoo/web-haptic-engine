@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Haptics Engine v5.1</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--p50:#EFF4FF;--p100:#DBEAFE;--p200:#BFDBFE;--p300:#93C5FD;--p400:#60A5FA;--p500:#3B82F6;--p600:#2563EB;--p700:#1D4ED8;--s50:#F8FAFC;--s100:#F1F5F9;--s200:#E2E8F0;--s300:#CBD5E1;--s400:#94A3B8;--s500:#64748B;--s600:#475569;--s800:#1E293B;--pageBg:#F0F4FA;--surface:#FFFFFF;--cat-blue-bg:#EFF6FF;--cat-blue:#2563EB;--cat-blue-glow:rgba(37,99,235,.12);--cat-violet-bg:#F5F3FF;--cat-violet:#7C3AED;--cat-violet-glow:rgba(124,58,237,.12);--cat-emerald-bg:#ECFDF5;--cat-emerald:#059669;--cat-emerald-glow:rgba(16,185,129,.12);--cat-amber-bg:#FFFBEB;--cat-amber:#D97706;--cat-amber-glow:rgba(245,158,11,.12);--r:12px}
+html{background:var(--pageBg)}body{font-family:'Inter',system-ui,sans-serif;color:var(--s800);background:var(--pageBg);min-height:100dvh;overflow-x:hidden;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+.sh{max-width:440px;margin:0 auto;padding:16px 14px 120px}
+.hdr{text-align:center;padding:20px 0 6px}.hdr h1{font-size:20px;font-weight:700;color:var(--s800)}.hdr h1 em{font-style:normal;color:var(--p600)}.hdr p{color:var(--s500);font-size:11px;margin-top:4px;line-height:1.5}
+.badge{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 13px;background:var(--surface);border:1px solid var(--s200);border-radius:100px;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--s500);box-shadow:0 1px 2px rgba(0,0,0,.04)}.badge .d{width:6px;height:6px;border-radius:50%}.badge .d.ok{background:#059669;box-shadow:0 0 5px rgba(5,150,105,.4)}.badge .d.no{background:#DC2626}
+.sec{margin-top:18px}.st{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1.6px;color:var(--s400);padding:0 2px 6px;display:flex;align-items:center;gap:7px}.st::after{content:'';flex:1;height:1px;background:var(--s200)}.st .tag{font-size:7px;padding:2px 6px;border-radius:4px;font-weight:600}.st .tag-b{background:var(--cat-blue-bg);color:var(--cat-blue)}.st .tag-v{background:var(--cat-violet-bg);color:var(--cat-violet)}
+.ctrl{background:var(--surface);border:1px solid var(--s200);border-radius:var(--r);padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.04)}.ctrl+.ctrl{margin-top:7px}
+.g{display:grid;gap:6px}.g3{grid-template-columns:repeat(3,1fr)}.g2{grid-template-columns:repeat(2,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+.hc{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:14px 4px 10px;background:var(--surface);border:1px solid var(--s200);border-radius:var(--r);cursor:pointer;overflow:hidden;transition:transform .1s,border-color .15s,box-shadow .2s;box-shadow:0 1px 2px rgba(0,0,0,.04)}.hc:active{transform:scale(.94)}.hc .nm{font-size:10px;font-weight:600;color:var(--s800)}.hc .ms{font-size:7px;font-family:'IBM Plex Mono',monospace;color:var(--s400)}.hc .ap{font-size:7px;font-family:'IBM Plex Mono',monospace;color:var(--p500);opacity:.7}
+.hc[data-c="n"]{border-left:3px solid var(--cat-blue)}.hc[data-c="n"]:active{box-shadow:0 0 0 3px var(--cat-blue-glow)}.hc[data-c="i"]{border-left:3px solid var(--cat-emerald)}.hc[data-c="i"]:active{box-shadow:0 0 0 3px var(--cat-emerald-glow)}.hc[data-c="s"]{border-left:3px solid var(--cat-amber)}.hc[data-c="s"]:active{box-shadow:0 0 0 3px var(--cat-amber-glow)}.hc[data-c="x"]{border-left:3px solid var(--cat-violet)}.hc[data-c="x"]:active{box-shadow:0 0 0 3px var(--cat-violet-glow)}
+.hc .rp{position:absolute;inset:0;background:radial-gradient(circle,var(--cat-blue-glow) 0%,transparent 70%);opacity:0;pointer-events:none}.hc[data-c="i"] .rp{background:radial-gradient(circle,var(--cat-emerald-glow) 0%,transparent 70%)}.hc[data-c="s"] .rp{background:radial-gradient(circle,var(--cat-amber-glow) 0%,transparent 70%)}.hc[data-c="x"] .rp{background:radial-gradient(circle,var(--cat-violet-glow) 0%,transparent 70%)}.hc.pop .rp{animation:rpop .35s ease-out}@keyframes rpop{0%{opacity:1}100%{opacity:0}}
+.row{display:flex;align-items:center;justify-content:space-between}.row .l{font-size:12px;font-weight:500;color:var(--s800)}.row .sub{font-size:8px;color:var(--s400);margin-top:1px}
+.sw{position:relative;width:38px;height:22px;background:var(--s200);border-radius:11px;cursor:pointer;transition:background .2s;border:1px solid var(--s300);flex-shrink:0}.sw.on{background:var(--p600);border-color:var(--p600)}.sw .k{position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .15s;box-shadow:0 1px 3px rgba(0,0,0,.12)}.sw.on .k{transform:translateX(16px)}
+.sl-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}.sl-row .t{font-size:12px;font-weight:500;color:var(--s800)}.sl-row .v{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--p600);font-weight:500}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:5px;border-radius:3px;background:var(--s200);outline:none}input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--p600);cursor:pointer;border:2px solid #fff;box-shadow:0 1px 4px rgba(37,99,235,.3)}
+.hint{font-size:9px;color:var(--s400);margin-top:5px;line-height:1.5}.hint b{color:var(--s600);font-weight:500}
+.da{background:var(--p50);border:2px dashed var(--p200);border-radius:var(--r);height:200px;position:relative;overflow:hidden;touch-action:none;transition:border-color .2s,background .2s}.da.dragging{border-color:var(--p400);background:var(--p100);border-style:solid}
+.da-inner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;pointer-events:none;transition:opacity .2s}.da.dragging .da-inner{opacity:.2}
+.da-inner .da-txt{font-size:14px;color:var(--p700);font-weight:600}.da-inner small{font-size:10px;color:var(--s400)}
+.da-dot{position:absolute;width:28px;height:28px;border-radius:50%;background:var(--p500);opacity:0;pointer-events:none;transform:translate(-50%,-50%);transition:opacity .1s}.da-dot.on{opacity:.3}
+.da-ring{position:absolute;width:40px;height:40px;border-radius:50%;border:2px solid var(--p500);pointer-events:none;transform:translate(-50%,-50%);opacity:0}.da-ring.flash{animation:ring .2s ease-out}@keyframes ring{0%{opacity:.6;transform:translate(-50%,-50%) scale(.5)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.4)}}
+.da-stats{position:absolute;bottom:0;left:0;right:0;padding:8px 14px;display:flex;justify-content:space-between;pointer-events:none;font-family:'IBM Plex Mono',monospace}.da-stats .ds{display:flex;flex-direction:column;align-items:center;gap:1px}.da-stats .ds .dv{font-weight:700;color:var(--p600);font-size:16px}.da-stats .ds .dl{font-size:7px;color:var(--s400);text-transform:uppercase;letter-spacing:.5px}
+.imp-btn{padding:13px 6px;background:var(--surface);border:1px solid var(--s200);border-radius:var(--r);cursor:pointer;text-align:center;transition:transform .1s;box-shadow:0 1px 2px rgba(0,0,0,.04)}.imp-btn:active{transform:scale(.93);box-shadow:0 0 0 3px var(--cat-blue-glow)}.imp-btn .ib-nm{font-size:11px;font-weight:600;color:var(--s800)}.imp-btn .ib-d{font-size:8px;color:var(--s400);margin-top:2px;font-family:'IBM Plex Mono',monospace}
+.sq-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}.sq-btn{padding:12px 8px;background:var(--surface);border:1px solid var(--s200);border-radius:var(--r);cursor:pointer;text-align:center;transition:transform .1s;box-shadow:0 1px 2px rgba(0,0,0,.04)}.sq-btn:active{transform:scale(.94);box-shadow:0 0 0 3px var(--cat-blue-glow)}.sq-btn .sq-nm{font-size:10px;font-weight:600;color:var(--s800)}.sq-btn .sq-d{font-size:8px;color:var(--s400);margin-top:2px;font-family:'IBM Plex Mono',monospace}
+.logbox{background:var(--surface);border:1px solid var(--s200);border-radius:var(--r);padding:8px 10px;max-height:70px;overflow-y:auto;font-family:'IBM Plex Mono',monospace;font-size:8px;line-height:1.8;color:var(--s400);box-shadow:0 1px 2px rgba(0,0,0,.04)}.logbox:empty::after{content:'Tap a preset…';color:var(--s300)}.le{display:flex;gap:4px}.le .p{color:var(--p600);font-weight:500}
+.info{font-size:9px;color:var(--s500);background:var(--p50);border:1px solid var(--p200);border-radius:var(--r);padding:10px 12px;line-height:1.7}.info b{color:var(--p700);font-weight:600}
+</style>
+</head>
+<body>
+<div class="sh" id="app"></div>
+<script>
+// === ENGINE v5.1 INLINE ===
+const MAX_S=1000,DI=.5,DTH=25,IGP=55,IMN=.12,DFDIST=18;
+const easings={linear:t=>t,easeIn:t=>t*t,easeOut:t=>t*(2-t),bounce:t=>{if(t<1/2.75)return 7.5625*t*t;if(t<2/2.75)return 7.5625*(t-=1.5/2.75)*t+.75;if(t<2.5/2.75)return 7.5625*(t-=2.25/2.75)*t+.9375;return 7.5625*(t-=2.625/2.75)*t+.984375},spring:t=>1-Math.cos(t*4.5*Math.PI)*Math.exp(-t*6)};
+class ImpLib{constructor(c){this.b=new Map();this.c=c;this._g()}_g(){const s=this.c.sampleRate;this._m('tick',s,.008,t=>{const e=Math.exp(-t*600);return Math.sin(6.28*320*t)*e+Math.sin(6.28*800*t)*e*.15});this._m('tap',s,.02,t=>{const e=Math.exp(-t*250);return Math.sin(6.28*220*t)*e+(t<.001?Math.sin(6.28*800*t)*(1-t/.001)*.4:0)+Math.sin(6.28*110*t)*e*.3});this._m('thud',s,.035,t=>{const e=Math.exp(-t*150);return Math.sin(6.28*160*t)*e+Math.sin(6.28*80*t)*e*.5+(t<.002?Math.sin(6.28*600*t)*(1-t/.002)*.3:0)});this._m('click',s,.005,t=>{const e=Math.exp(-t*1200);return Math.sin(6.28*400*t)*e+Math.sin(6.28*1200*t)*e*.1});this._m('snap',s,.01,t=>{const e=Math.exp(-t*500);return Math.sin(6.28*500*t)*e+Math.sin(6.28*1380*t)*e*.2});this._m('buzz',s,.06,t=>{const e=Math.exp(-t*40);let s=0;for(let h=1;h<=5;h++)s+=Math.sin(6.28*200*h*t)/h;return s*e*.4});this._m('confirm',s,.025,t=>{const e=Math.exp(-t*200);return(Math.sin(6.28*280*t)*.6+Math.sin(6.28*420*t)*.4)*e});this._m('harsh',s,.03,t=>{const f=180,e=Math.exp(-t*160);let s=0;for(let h=1;h<=6;h++)s+=Math.sin(6.28*f*h*t)*(h%2===0?.8:1)/h;return(s+Math.sin(6.28*f*1.07*t)*e*.3)*e*.35})}_m(n,sr,d,fn){const l=Math.ceil(sr*d),buf=this.c.createBuffer(1,l,sr),da=buf.getChannelData(0);let pk=0;for(let i=0;i<l;i++){da[i]=fn(i/sr);pk=Math.max(pk,Math.abs(da[i]))}if(pk>0)for(let i=0;i<l;i++)da[i]/=pk;this.b.set(n,buf)}get(n){return this.b.get(n)}}
+class AIL{constructor(g=.6){this.x=null;this.lib=null;this.mg=g;this.u=false}unlock(){if(this.u)return;try{const c=this._e();const b=c.createBuffer(1,1,c.sampleRate),s=c.createBufferSource();s.buffer=b;s.connect(c.destination);s.start(0);this.u=true}catch{}}_e(){if(!this.x){this.x=new AudioContext();this.lib=new ImpLib(this.x)}if(this.x.state==='suspended')this.x.resume();return this.x}fire(type,int){try{const c=this._e();if(!this.lib)return;const buf=this.lib.get(type);if(!buf)return;const s=c.createBufferSource(),g=c.createGain();s.buffer=buf;g.gain.value=int*this.mg;s.connect(g);g.connect(c.destination);s.start(0)}catch{}}fireSeq(vs,type,int,ef){let el=0;const c=vs.length;for(let i=0;i<c;i++){const v=vs[i],dl=el+(v.delay??0),si=v.intensity??int;const pr=c>1?i/(c-1):1;const ei=ef?si*Math.max(.1,ef(pr)):si;if(dl<=0)this.fire(type,ei);else setTimeout(()=>this.fire(type,ei),dl);el=dl+v.duration}}setGain(g){this.mg=Math.max(0,Math.min(1,g))}destroy(){this.x?.close()}}
+
+const P={success:{d:'Ascending double-tap',p:[{duration:30,intensity:.5},{delay:65,duration:45,intensity:1}],it:2,ig:80,im:'confirm',c:'n'},warning:{d:'Two hesitant taps',p:[{duration:40,intensity:.7},{delay:120,duration:35,intensity:.5}],it:2,ig:140,im:'harsh',c:'n'},error:{d:'Three rapid harsh',p:[{duration:45,intensity:.9},{delay:50,duration:45,intensity:.9},{delay:50,duration:45,intensity:.9}],it:3,ig:65,im:'harsh',c:'n'},confirm:{d:'Strong double-tap',p:[{duration:35,intensity:.9},{delay:100,duration:50,intensity:1}],it:2,ig:110,im:'confirm',c:'n'},reject:{d:'Harsh staccato triple',p:[{duration:30,intensity:1},{delay:30,duration:30,intensity:1},{delay:30,duration:50,intensity:1}],it:3,ig:45,im:'harsh',c:'n'},light:{d:'Single light tap',p:[{duration:12,intensity:.35}],it:1,im:'tick',c:'i'},medium:{d:'Moderate tap',p:[{duration:28,intensity:.65}],it:1,im:'tap',c:'i'},heavy:{d:'Strong tap',p:[{duration:40,intensity:1}],it:2,ig:30,im:'thud',c:'i'},soft:{d:'Cushioned tap',p:[{duration:45,intensity:.45}],it:1,im:'tap',c:'i'},rigid:{d:'Hard crisp snap',p:[{duration:8,intensity:1}],it:1,im:'snap',c:'i'},selection:{d:'Subtle tick',p:[{duration:6,intensity:.25}],it:1,im:'tick',c:'s'},tick:{d:'Crisp tick',p:[{duration:10,intensity:.5}],it:1,im:'click',c:'s'},click:{d:'Ultra-short click',p:[{duration:5,intensity:.8}],it:1,im:'click',c:'s'},snap:{d:'Sharp snap',p:[{duration:6,intensity:1}],it:1,im:'snap',c:'s'},nudge:{d:'Two quick taps',p:[{duration:60,intensity:.7},{delay:70,duration:40,intensity:.3}],it:2,ig:90,im:'tap',c:'x'},buzz:{d:'Sustained vibration',p:[{duration:800,intensity:1}],it:8,ig:50,im:'buzz',c:'x'},heartbeat:{d:'Heartbeat',p:[{duration:35,intensity:.8},{delay:80,duration:25,intensity:.5},{delay:300,duration:35,intensity:.8},{delay:80,duration:25,intensity:.5}],it:4,ig:0,im:'thud',c:'x'},spring:{d:'Bouncy',p:[{duration:40,intensity:1},{delay:50,duration:30,intensity:.7},{delay:45,duration:20,intensity:.45},{delay:40,duration:12,intensity:.25}],it:4,ig:55,im:'tap',e:'bounce',c:'x'},rampUp:{d:'Escalating',p:[{duration:12,intensity:.2},{delay:50,duration:18,intensity:.4},{delay:45,duration:25,intensity:.65},{delay:40,duration:35,intensity:1}],it:4,ig:60,im:'tap',e:'easeIn',c:'x'},rampDown:{d:'Decreasing',p:[{duration:35,intensity:1},{delay:45,duration:25,intensity:.6},{delay:50,duration:15,intensity:.3},{delay:55,duration:8,intensity:.15}],it:3,ig:65,im:'tap',e:'easeOut',c:'x'},thud:{d:'Heavy impact',p:[{duration:50,intensity:1},{delay:40,duration:25,intensity:.35}],it:2,ig:50,im:'thud',c:'x'},trill:{d:'Rapid flutter',p:[{duration:15,intensity:.8},{delay:25,duration:15,intensity:.8},{delay:25,duration:15,intensity:.8},{delay:25,duration:15,intensity:.8},{delay:25,duration:15,intensity:.8}],it:5,ig:35,im:'click',c:'x'},pulse:{d:'Rhythmic pulse',p:[{duration:30,intensity:.6},{delay:150,duration:30,intensity:.6},{delay:150,duration:30,intensity:.6}],it:3,ig:180,im:'tap',c:'x'}};
+const hasVib=()=>typeof navigator!=='undefined'&&typeof navigator.vibrate==='function';const isIOS=()=>{if(typeof document==='undefined')return false;if(hasVib())return false;if(!('ontouchstart' in window)&&!navigator.maxTouchPoints)return false;try{const e=document.createElement('input');e.type='checkbox';e.setAttribute('switch','');return e.getAttribute('switch')!==null}catch{return false}};const detectPlat=()=>{if(typeof window==='undefined')return'none';if(hasVib())return'vibration';if(isIOS())return'ios-switch';return'none'};
+function buildAP(v,di,ef){const f=[];const c=v.length;for(let i=0;i<c;i++){const s=v[i];let int=Math.max(0,Math.min(1,s.intensity??di));if(ef&&c>1)int*=Math.max(.1,ef(i/(c-1)));const sc=Math.max(1,Math.round(Math.min(s.duration,MAX_S)*Math.max(.15,int)));if(s.delay&&s.delay>0){if(!f.length)f.push(0,s.delay);else if(f.length%2===0)f[f.length-1]+=s.delay;else f.push(s.delay)}if(f.length>0&&f.length%2===1)f.push(0);f.push(sc)}return f}
+class IOSPool{constructor(){this.c=document.createElement('div');Object.assign(this.c.style,{position:'fixed',top:'-9999px',left:'-9999px',width:'1px',height:'1px',overflow:'hidden',opacity:'0',pointerEvents:'none',contain:'strict'});this.c.setAttribute('aria-hidden','true');document.body.appendChild(this.c);this.ps=[];this.ni=0;for(let i=0;i<6;i++){const id='__hp'+i+'_'+Date.now();const inp=document.createElement('input');inp.type='checkbox';inp.setAttribute('switch','');inp.id=id;inp.tabIndex=-1;const lb=document.createElement('label');lb.htmlFor=id;this.c.appendChild(inp);this.c.appendChild(lb);this.ps.push({i:inp,l:lb})}}fire(){const p=this.ps[this.ni];this.ni=(this.ni+1)%this.ps.length;p.l.click()}destroy(){this.c.remove()}}
+function iosPlan(v,pr,di){if(pr?.it!==undefined){const bt=pr.it,sc=Math.max(1,Math.round(bt*Math.max(.25,di))),gap=pr.ig??IGP;if(gap===0&&v.length>1){const gs=[];for(let i=1;i<v.length&&gs.length<sc-1;i++)gs.push((v[i].delay??0)+v[i-1].duration);return{t:Math.min(sc,gs.length+1),g:gs}}return{t:sc,g:Array(Math.max(0,sc-1)).fill(gap)}}let t=0;const gs=[];for(const s of v){if((s.intensity??di)>=IMN){if(t>0)gs.push((s.delay??0)+(v[t-1]?.duration??0));t++}}const sc=Math.max(1,Math.round(t*Math.max(.25,di)));return{t:sc,g:gs.slice(0,Math.max(0,sc-1))}}
+
+// === ENGINE ===
+class Eng{
+  constructor(o={}){this.thr=o.throttleMs??DTH;this.useAud=o.audioLayer??true;this.plat=detectPlat();this.en=true;this.lt=0;this.ac=null;this._cbs=[];
+    this.ios=this.plat==='ios-switch'?new IOSPool():null;
+    this.al=new AIL(o.audioGain??.6);
+    const ul=()=>{this.al?.unlock()};document.addEventListener('touchstart',ul,{once:true,passive:true});document.addEventListener('click',ul,{once:true})}
+  onTrigger(cb){this._cbs.push(cb)}
+  async trigger(input,opts){if(!this.en)return;const now=performance.now();if(now-this.lt<this.thr)return;this.lt=now;this.cancel();const r=this._res(input);if(!r.v.length)return;const di=opts?.intensity??DI;const ef=r.p?.e?easings[r.p.e]:undefined;const nm=typeof input==='string'?input:(input==null?'medium':'custom');this._cbs.forEach(cb=>cb(nm,r.v,di,r.p));this.al?.unlock();if(this.useAud&&this.al&&r.p?.im)this.al.fireSeq(r.v,r.p.im,di,ef);if(this.plat==='vibration')await this._and(r.v,di,ef);else if(this.plat==='ios-switch')await this._ios(r.v,r.p,di)}
+  fireImpulse(type,int,force){if((force||this.useAud)&&this.al){this.al.unlock();this.al.fire(type,int)}}
+  fireHapticTick(int){if(this.plat==='vibration'){try{navigator.vibrate(Math.max(1,Math.round(10*int)))}catch{}}else if(this.plat==='ios-switch'&&this.ios){try{this.ios.fire()}catch{}}}
+  async sequence(steps,opts){const rep=opts?.repeat??1,rg=opts?.repeatGap??200;const ac=new AbortController();this.ac=ac;for(let r=0;r<rep;r++){if(ac.signal.aborted)return;for(const s of steps){if(ac.signal.aborted)return;if(s.delay&&s.delay>0){await this._sl(s.delay,ac.signal);if(ac.signal.aborted)return}this.lt=0;await this.trigger(s.preset,{intensity:s.intensity})}if(r<rep-1&&rg>0)await this._sl(rg,ac.signal)}}
+  cancel(){this.ac?.abort();this.ac=null;if(this.plat==='vibration'&&hasVib())navigator.vibrate(0)}
+  setEnabled(e){this.en=e;if(!e)this.cancel()}
+  setAudioLayer(e){this.useAud=e}
+  setAudioGain(g){this.al?.setGain(g)}
+  destroy(){this.cancel();this.ios?.destroy();this.al?.destroy()}
+  _res(i){if(i==null)return{v:P.medium.p,p:P.medium};if(typeof i==='string'){const p=P[i];if(!p)return{v:[],p:null};return{v:p.p,p}}if(typeof i==='number')return{v:[{duration:i}],p:null};if(typeof i==='object'&&!Array.isArray(i)&&'pattern' in i)return{v:i.pattern,p:i};if(Array.isArray(i)){if(!i.length)return{v:[],p:null};if(typeof i[0]==='number'){const r=[];let pd=0;for(let j=0;j<i.length;j++){if(j%2===0){r.push({duration:i[j],...(pd>0?{delay:pd}:{})});pd=0}else pd=i[j]}return{v:r,p:null}}return{v:i,p:null}}return{v:[],p:null}}
+  async _and(v,di,ef){const p=buildAP(v,di,ef);if(!p.length)return;navigator.vibrate(p);const t=p.reduce((s,x)=>s+x,0);if(t>0){const ac=new AbortController();this.ac=ac;await this._sl(t,ac.signal)}}
+  async _ios(v,pr,di){if(!this.ios)return;const plan=iosPlan(v,pr,di);if(plan.t<=0)return;const ac=new AbortController();this.ac=ac;for(let i=0;i<plan.t;i++){if(ac.signal.aborted)return;this.ios.fire();if(i<plan.t-1){const g=plan.g[i]??IGP;if(g>0){await this._sl(g,ac.signal);if(ac.signal.aborted)return}}}}
+  _sl(ms,sig){return new Promise(r=>{if(sig.aborted){r();return}const t=setTimeout(r,ms);sig.addEventListener('abort',()=>{clearTimeout(t);r()},{once:true})})}
+}
+
+// === DRAG HAPTICS — touchmove-driven (user activation on every fire) ===
+class DragH{
+  constructor(engine,opts={}){this.engine=engine;this.fdist=opts.fireDist??DFDIST;this.impulse=opts.impulse??'tick';this.intensity=opts.intensity??.6;this.onTick=opts.onTick;this.curX=0;this.curY=0;this.lfX=0;this.lfY=0;this.pvX=0;this.pvY=0;this.pvT=0;this.active=false;this.ticks=0;this.cleanups=[]}
+  bind(el){
+    const onS=e=>{const t=e.touches[0];this.curX=this.lfX=this.pvX=t.clientX;this.curY=this.lfY=this.pvY=t.clientY;this.pvT=performance.now();this.active=true;this.ticks=0;
+      this._fire()};
+    const onM=e=>{if(!this.active)return;const t=e.touches[0];this.pvX=this.curX;this.pvY=this.curY;this.pvT=performance.now();this.curX=t.clientX;this.curY=t.clientY;
+      if(this._dist()>=this.fdist)this._fire()};
+    const onE=()=>{this.active=false};
+    el.addEventListener('touchstart',onS,{passive:true});el.addEventListener('touchmove',onM,{passive:true});el.addEventListener('touchend',onE,{passive:true});el.addEventListener('touchcancel',onE,{passive:true});
+    const ub=()=>{el.removeEventListener('touchstart',onS);el.removeEventListener('touchmove',onM);el.removeEventListener('touchend',onE);el.removeEventListener('touchcancel',onE);onE()};this.cleanups.push(ub);return ub}
+  _dist(){const dx=this.curX-this.lfX,dy=this.curY-this.lfY;return Math.sqrt(dx*dx+dy*dy)}
+  _vel(){const dt=(performance.now()-this.pvT)/1000;if(dt<.001)return 0;const dx=this.curX-this.pvX,dy=this.curY-this.pvY;return Math.sqrt(dx*dx+dy*dy)/dt}
+  _fire(){
+    this.engine.fireHapticTick(this.intensity);
+    this.engine.fireImpulse(this.impulse,this.intensity,true);
+    this.lfX=this.curX;this.lfY=this.curY;
+    this.ticks++;this.onTick?.(this._vel(),this.ticks)}
+  destroyAll(){this.active=false;this.cleanups.forEach(fn=>fn())}
+}
+
+// === UI ===
+const engine=new Eng({throttleMs:15,audioLayer:true,audioGain:.6});
+const plat=detectPlat();
+const PL={'vibration':'Android · Vibration + Audio','ios-switch':'iOS · Taptic + Audio','none':'Desktop · Audio Only'}[plat];
+let intensity=.6,audioGain=.6,audioOn=true,logs=[];
+function dur(p){return p.reduce((s,v)=>s+(v.delay??0)+v.duration,0)}
+engine.onTrigger((nm,vs,di,pr)=>{logs.unshift({nm,d:dur(vs),im:pr?.im||'-'});if(logs.length>10)logs.pop();renderLog()});
+function fire(n){const el=document.querySelector(`[data-n="${n}"]`);if(el){el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop')}engine.trigger(n,{intensity})}
+function fireImp(type){engine.al?.unlock();engine.al?.fire(type,intensity)}
+function renderLog(){const el=document.getElementById('log');if(!el)return;el.innerHTML=logs.map(l=>`<div class="le"><span class="p">${l.nm}</span> ${l.d}ms · ${l.im}</div>`).join('')}
+function cards(cat,cols){const items=Object.entries(P).filter(([_,v])=>v.c===cat);return`<div class="g g${cols}">${items.map(([k,v])=>`<div class="hc" data-c="${cat}" data-n="${k}"><div class="rp"></div><div class="nm">${k}</div><div class="ms">${dur(v.p)}ms</div><div class="ap">${v.im||''}</div></div>`).join('')}</div>`}
+const impulseTypes=[{type:'tick',hz:'320Hz'},{type:'click',hz:'400Hz'},{type:'tap',hz:'220Hz'},{type:'snap',hz:'500Hz'},{type:'thud',hz:'160Hz'},{type:'confirm',hz:'280Hz'},{type:'harsh',hz:'180Hz'},{type:'buzz',hz:'200Hz'}];
+const sequences=[{name:'Cascade',desc:'success → warning → error',steps:[{preset:'success'},{preset:'warning',delay:300},{preset:'error',delay:300}]},{name:'Heartbeat ×2',desc:'double heartbeat',steps:[{preset:'heartbeat'}],opts:{repeat:2,repeatGap:400}},{name:'Tension Build',desc:'rampUp → confirm',steps:[{preset:'rampUp'},{preset:'confirm',delay:200}]},{name:'Impact Chain',desc:'thud → spring',steps:[{preset:'thud'},{preset:'spring',delay:150}]}];
+
+function render(){
+  document.getElementById('app').innerHTML=`
+    <div class="hdr"><h1>Haptics Engine <em>v5.1</em></h1><p>Touchmove-driven drag haptics · Impulse buffers · 22 presets</p><div class="badge"><span class="d ${plat!=='none'?'ok':'no'}"></span>${PL}</div></div>
+    <div class="sec"><div class="info"><b>How drag haptics work:</b> touchstart fires the first haptic tick. Each touchmove checks if the finger moved ≥18px since the last fire — if so, fires haptic + audio. Every fire happens inside a user gesture (touchstart/touchmove), so iOS Taptic and audio work reliably. Faster drag = more ticks.</div></div>
+
+    <div class="sec"><div class="ctrl"><div class="row"><div><div class="l">Audio on Presets</div><div class="sub">Drag always fires audio + haptic regardless</div></div><div class="sw ${audioOn?'on':''}" id="at"><div class="k"></div></div></div></div></div>
+    <div class="sec"><div class="ctrl"><div class="sl-row"><span class="t">Intensity</span><span class="v" id="iv">${intensity.toFixed(2)}</span></div><input type="range" id="ir" min="0" max="100" value="${intensity*100}"></div>
+    <div class="ctrl"><div class="sl-row"><span class="t">Audio Volume</span><span class="v" id="gv">${audioGain.toFixed(2)}</span></div><input type="range" id="gr" min="0" max="100" value="${audioGain*100}"></div></div>
+
+    <div class="sec"><div class="st">Drag Haptics <span class="tag tag-b">TOUCHMOVE-DRIVEN</span></div>
+    <div class="ctrl" style="padding:8px 13px">
+      <div class="da" id="da"><div class="da-dot" id="dd"></div><div class="da-ring" id="dr"></div>
+        <div class="da-inner"><div class="da-txt">Drag here</div><small>18px detent · haptic + audio on every touchmove</small></div>
+        <div class="da-stats"><div class="ds"><div class="dv" id="sv">0</div><div class="dl">px/s</div></div><div class="ds"><div class="dv" id="stt">0</div><div class="dl">ticks</div></div></div>
+      </div></div></div>
+
+    <div class="sec"><div class="st">Impulse Buffers <span class="tag tag-v">AudioBuffer</span></div>
+    <div class="g g4">${impulseTypes.map(i=>`<div class="imp-btn" data-imp="${i.type}"><div class="ib-nm">${i.type}</div><div class="ib-d">${i.hz}</div></div>`).join('')}</div></div>
+
+    <div class="sec"><div class="st">Notification</div>${cards('n',3)}</div>
+    <div class="sec"><div class="st">Impact</div>${cards('i',3)}</div>
+    <div class="sec"><div class="st">Selection</div>${cards('s',2)}</div>
+    <div class="sec"><div class="st">Expressive</div>${cards('x',3)}</div>
+    <div class="sec"><div class="st">Sequences</div><div class="sq-grid">${sequences.map((s,i)=>`<div class="sq-btn" data-si="${i}"><div class="sq-nm">${s.name}</div><div class="sq-d">${s.desc}</div></div>`).join('')}</div></div>
+    <div class="sec"><div class="st">Event Log</div><div class="logbox" id="log"></div></div>
+  `;
+
+  document.querySelectorAll('.hc').forEach(c=>c.addEventListener('click',()=>fire(c.dataset.n)));
+  document.querySelectorAll('.imp-btn').forEach(b=>b.addEventListener('click',()=>fireImp(b.dataset.imp)));
+  document.getElementById('ir').addEventListener('input',e=>{intensity=parseInt(e.target.value,10)/100;document.getElementById('iv').textContent=intensity.toFixed(2)});
+  document.getElementById('gr').addEventListener('input',e=>{audioGain=parseInt(e.target.value,10)/100;document.getElementById('gv').textContent=audioGain.toFixed(2);engine.setAudioGain(audioGain)});
+  document.getElementById('at').addEventListener('click',()=>{audioOn=!audioOn;engine.setAudioLayer(audioOn);document.getElementById('at').classList.toggle('on',audioOn)});
+  document.querySelectorAll('.sq-btn').forEach(b=>b.addEventListener('click',()=>{const s=sequences[b.dataset.si];engine.sequence(s.steps,s.opts)}));
+
+  // === DRAG AREA ===
+  const da=document.getElementById('da'),dd=document.getElementById('dd'),dr=document.getElementById('dr');
+  const sv=document.getElementById('sv'),stt=document.getElementById('stt');
+  const dragH=new DragH(engine,{fireDist:18,impulse:'tick',intensity:intensity,
+    onTick:(vel,ticks)=>{
+      sv.textContent=Math.round(vel);stt.textContent=ticks;
+      // Visual ring flash at current finger position
+      const r=da.getBoundingClientRect();
+      dr.style.left=(dragH.curX-r.left)+'px';dr.style.top=(dragH.curY-r.top)+'px';
+      dr.classList.remove('flash');void dr.offsetWidth;dr.classList.add('flash');
+    }
+  });
+  da.addEventListener('touchstart',e=>{const t=e.touches[0];const r=da.getBoundingClientRect();dd.style.left=(t.clientX-r.left)+'px';dd.style.top=(t.clientY-r.top)+'px';dd.classList.add('on');da.classList.add('dragging');sv.textContent='0';stt.textContent='0'},{passive:true});
+  da.addEventListener('touchmove',e=>{const t=e.touches[0];const r=da.getBoundingClientRect();dd.style.left=(t.clientX-r.left)+'px';dd.style.top=(t.clientY-r.top)+'px'},{passive:true});
+  da.addEventListener('touchend',()=>{dd.classList.remove('on');da.classList.remove('dragging')},{passive:true});
+  da.addEventListener('touchcancel',()=>{dd.classList.remove('on');da.classList.remove('dragging')},{passive:true});
+  dragH.bind(da);
+}
+render();
+</script>
+</body>
+</html>
