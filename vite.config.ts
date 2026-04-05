@@ -1,6 +1,6 @@
-import tsdownConfig from './tsdown.config.js';
-
 import { defineConfig } from 'vite-plus';
+
+import tsdownConfig from './tsdown.config';
 
 export default defineConfig({
   pack: tsdownConfig,

@@ -1,3 +1,19 @@
-export function fn() {
-  return 'Hello, tsdown!'
-}
+export {
+  DragHaptics,
+  easings,
+  getDefaultEngine,
+  haptic,
+  HapticsEngine,
+  presets,
+  type DragHapticsOptions,
+  type EasingFn,
+  type HapticInput,
+  type HapticPattern,
+  type HapticPreset,
+  type HapticsEngineOptions,
+  type ImpulseType,
+  type SequenceOptions,
+  type SequenceStep,
+  type TriggerOptions,
+  type Vibration,
+} from './haptic-engine'
