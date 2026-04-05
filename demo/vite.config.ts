@@ -2,6 +2,7 @@ import { defineConfig } from 'vite-plus'
 
 export default defineConfig({
   root: __dirname,
+  base: '/web-haptic-engine/',
   server: {
     allowedHosts: true,
   },
