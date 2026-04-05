@@ -249,20 +249,33 @@ await haptic('heavy', { intensity: 1 }) // with options
 
 ```bash
 # Install dependencies
-pnpm install
+vp install
 
 # Build the library
-pnpm build
+vp pack
 
 # Run tests
-pnpm test
-
-# Run the demo
-pnpm demo
+vp test
 
 # Watch mode (rebuild on changes)
-pnpm dev
+vp pack --watch
 ```
+
+---
+
+## Demo
+
+An interactive demo is included in the `demo/` directory. It showcases all 23 presets, drag haptics, impulse buffers, sequences, and real-time controls for intensity and audio gain.
+
+```bash
+# Install dependencies (if not already done)
+vp install
+
+# Start the demo dev server
+vp dev --config demo/vite.config.ts
+```
+
+This launches a Vite dev server. Open the URL shown in the terminal (typically `http://localhost:5173`) in your browser. For the full haptic experience, open it on a mobile device — Android for vibration, iOS Safari for Taptic feedback. On desktop, audio impulses still play as a fallback.
 
 ---
 
