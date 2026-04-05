@@ -68,9 +68,9 @@ await haptic(50);
 ### Using the Engine
 
 ```ts
-import { HapticsEngine } from "web-haptic-engine";
+import { HapticEngine } from "web-haptic-engine";
 
-const engine = new HapticsEngine({
+const engine = new HapticEngine({
   throttleMs: 25,
   audioLayer: true,
   audioGain: 0.6,
@@ -105,9 +105,9 @@ engine.destroy();
 ### 👆 Drag Haptics
 
 ```ts
-import { HapticsEngine } from "web-haptic-engine";
+import { HapticEngine } from "web-haptic-engine";
 
-const engine = new HapticsEngine();
+const engine = new HapticEngine();
 
 const drag = engine.drag({
   fireDist: 18, // px between haptic fires
@@ -161,10 +161,10 @@ engine.destroy();
 
 ## 📖 API Reference
 
-### `HapticsEngine`
+### `HapticEngine`
 
 ```ts
-const engine = new HapticsEngine(options?: HapticsEngineOptions)
+const engine = new HapticEngine(options?: HapticEngineOptions)
 ```
 
 | Option | Type | Default | Description |
@@ -194,9 +194,9 @@ const engine = new HapticsEngine(options?: HapticsEngineOptions)
 
 | Property | Description |
 | --- | --- |
-| `HapticsEngine.supportsVibration` | `true` if `navigator.vibrate` is available |
-| `HapticsEngine.supportsIOSHaptics` | `true` if iOS Taptic switch is supported |
-| `HapticsEngine.isSupported` | `true` if any haptic method is available |
+| `HapticEngine.supportsVibration` | `true` if `navigator.vibrate` is available |
+| `HapticEngine.supportsIOSHaptics` | `true` if iOS Taptic switch is supported |
+| `HapticEngine.isSupported` | `true` if any haptic method is available |
 
 ### `DragHaptics`
 
