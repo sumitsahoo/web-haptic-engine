@@ -156,7 +156,7 @@ function render(): void {
     <div class="sec">
       <div class="ctrl">
         <div class="row">
-          <div><div class="l">Audio on Presets</div><div class="sub">Drag always fires audio + haptic regardless</div></div>
+          <div><div class="l">Audio</div><div class="sub">Controls audio for presets and drag</div></div>
           <div class="sw ${audioOn ? 'on' : ''}" id="at"><div class="k"></div></div>
         </div>
       </div>

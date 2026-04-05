@@ -415,18 +415,19 @@ export class DragHaptics {
   }
 
   private fireTick(): void {
-    // Haptic (Taptic on iOS, vibrate on Android)
-    this.engine.fireHapticTick(this.opts.intensity);
+    const velocity = this.getVelocity();
 
-    // Audio impulse (always fires — force mode)
-    this.engine.fireImpulse(this.opts.impulse, this.opts.intensity, true);
+    // Haptic — velocity scales tap count (1-4) for stronger drag feel
+    this.engine.fireHapticTick(this.opts.intensity, velocity);
 
-    // Update last fire position
+    // Audio — respects the engine's audio toggle (no force)
+    this.engine.fireImpulse(this.opts.impulse, this.opts.intensity);
+
     this.lastFireX = this.curX;
     this.lastFireY = this.curY;
 
     this.tickCount++;
-    this.opts.onTick?.(this.getVelocity(), this.tickCount);
+    this.opts.onTick?.(velocity, this.tickCount);
   }
 
   destroyAll(): void {
@@ -471,8 +472,8 @@ export class HapticsEngine {
 
     if (typeof document !== 'undefined') {
       const unlock = () => { this.audio?.unlock(); };
-      document.addEventListener('touchstart', unlock, { once: true, passive: true });
-      document.addEventListener('click', unlock, { once: true });
+      document.addEventListener('touchstart', unlock, { once: true, passive: true, capture: true });
+      document.addEventListener('click', unlock, { once: true, capture: true });
     }
   }
 
@@ -503,12 +504,20 @@ export class HapticsEngine {
     }
   }
 
-  /** Fire one platform haptic tick. */
-  fireHapticTick(intensity: number): void {
+  /** Fire platform haptic tick(s). velocity (px/s) scales tap count for drag feel. */
+  fireHapticTick(intensity: number, velocity?: number): void {
+    const taps = velocity != null ? Math.max(1, Math.min(4, Math.ceil(velocity / 400))) : 1;
     if (this.platform === 'vibration') {
-      try { navigator.vibrate(Math.max(1, Math.round(10 * intensity))); } catch {}
+      if (taps === 1) {
+        try { navigator.vibrate(Math.max(1, Math.round(10 * intensity))); } catch {}
+      } else {
+        const d = Math.max(1, Math.round(8 * intensity));
+        const pat: number[] = [];
+        for (let i = 0; i < taps; i++) { if (i > 0) pat.push(5); pat.push(d); }
+        try { navigator.vibrate(pat); } catch {}
+      }
     } else if (this.platform === 'ios-switch' && this.iosPool) {
-      try { this.iosPool.fire(); } catch {}
+      try { for (let i = 0; i < taps; i++) this.iosPool.fire(); } catch {}
     }
   }
 
