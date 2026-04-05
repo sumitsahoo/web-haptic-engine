@@ -41,7 +41,7 @@ export interface HapticPreset {
 }
 
 export type HapticInput = number | string | HapticPattern | HapticPreset;
-export interface TriggerOptions { intensity?: number; audio?: boolean; skipThrottle?: boolean; }
+export interface TriggerOptions { intensity?: number; audio?: boolean; }
 export interface HapticsEngineOptions {
   debug?: boolean;
   throttleMs?: number;
@@ -310,8 +310,8 @@ function iosPlan(vibs: Vibration[], pr: HapticPreset | null, di: number): { tick
 export interface DragHapticsOptions {
   /** Minimum px moved since last fire to trigger next haptic (default: 18). */
   fireDist?: number;
-  /** Preset to trigger on each drag tick (default: 'tick'). */
-  preset?: string;
+  /** Impulse type for audio (default: 'tick'). */
+  impulse?: ImpulseType;
   /** Intensity (default: 0.6). */
   intensity?: number;
   /** Callback on each haptic fire. */
@@ -325,9 +325,7 @@ export class DragHaptics {
   curY = 0;
   private lastFireX = 0;
   private lastFireY = 0;
-  private prevX = 0;
-  private prevY = 0;
-  private prevT = 0;
+  private lastFireT = 0;
   private active = false;
   private tickCount = 0;
   private cleanup: (() => void)[] = [];
@@ -336,52 +334,40 @@ export class DragHaptics {
     this.engine = engine;
     this.opts = {
       fireDist: options.fireDist ?? DRAG_FIRE_DIST,
-      preset: options.preset ?? 'tick',
+      impulse: options.impulse ?? 'tick',
       intensity: options.intensity ?? 0.6,
       onTick: options.onTick,
     };
   }
 
-  /**
-   * Bind drag haptics to an element.
-   *
-   * touchstart: fire first tick (user activation).
-   * touchmove: check distance from last fire, fire if threshold met.
-   *   Each touchmove IS a user gesture, so iOS Taptic + audio always work.
-   * touchend: stop.
-   */
   bind(element: HTMLElement): () => void {
     const onStart = (e: TouchEvent) => {
       const t = e.touches[0];
-      this.curX = this.lastFireX = this.prevX = t.clientX;
-      this.curY = this.lastFireY = this.prevY = t.clientY;
-      this.prevT = performance.now();
+      this.curX = this.lastFireX = t.clientX;
+      this.curY = this.lastFireY = t.clientY;
+      this.lastFireT = performance.now();
       this.active = true;
       this.tickCount = 0;
-
-      // Fire first tick immediately — this is a user activation event
-      this.fireTick();
+      this.fireTick(0);
     };
 
     const onMove = (e: TouchEvent) => {
       if (!this.active) return;
       const t = e.touches[0];
-      this.prevX = this.curX;
-      this.prevY = this.curY;
-      this.prevT = performance.now();
       this.curX = t.clientX;
       this.curY = t.clientY;
 
-      // Fire haptic if finger moved enough — touchmove is a user gesture
-      // so iOS Taptic (switch toggle) and audio both work reliably
       if (this.distFromLastFire() >= this.opts.fireDist) {
-        this.fireTick();
+        // Compute velocity from distance and time since last fire
+        const now = performance.now();
+        const dt = (now - this.lastFireT) / 1000;
+        const dist = this.distFromLastFire();
+        const velocity = dt > 0.001 ? dist / dt : 0;
+        this.fireTick(velocity);
       }
     };
 
-    const onEnd = () => {
-      this.active = false;
-    };
+    const onEnd = () => { this.active = false; };
 
     element.addEventListener('touchstart', onStart, { passive: true });
     element.addEventListener('touchmove', onMove, { passive: true });
@@ -405,23 +391,17 @@ export class DragHaptics {
     return Math.sqrt(dx * dx + dy * dy);
   }
 
-  private getVelocity(): number {
-    const now = performance.now();
-    const dt = (now - this.prevT) / 1000;
-    if (dt < 0.001) return 0;
-    const dx = this.curX - this.prevX;
-    const dy = this.curY - this.prevY;
-    return Math.sqrt(dx * dx + dy * dy) / dt;
-  }
+  private fireTick(velocity: number): void {
+    // Fire haptic motor directly — no cancel(), no vibrate(0) overhead.
+    // Velocity scales pulse count so faster drag = stronger feel.
+    this.engine.fireDragTick(this.opts.intensity, velocity);
 
-  private fireTick(): void {
-    const velocity = this.getVelocity();
-
-    // Same code path as button presses — trigger the preset directly
-    this.engine.trigger(this.opts.preset, { intensity: this.opts.intensity, skipThrottle: true });
+    // Audio — respects the engine's audio toggle
+    this.engine.fireImpulse(this.opts.impulse, this.opts.intensity);
 
     this.lastFireX = this.curX;
     this.lastFireY = this.curY;
+    this.lastFireT = performance.now();
 
     this.tickCount++;
     this.opts.onTick?.(velocity, this.tickCount);
@@ -477,9 +457,7 @@ export class HapticsEngine {
   async trigger(input?: HapticInput, options?: TriggerOptions): Promise<void> {
     if (!this.enabled) return;
     const now = performance.now();
-    if (!options?.skipThrottle) {
-      if (now - this.lastTriggerTime < this.throttleMs) return;
-    }
+    if (now - this.lastTriggerTime < this.throttleMs) return;
     this.lastTriggerTime = now;
     this.cancel();
     const r = this.resolveInput(input);
@@ -509,6 +487,29 @@ export class HapticsEngine {
       try { navigator.vibrate(Math.max(1, Math.round(10 * intensity))); } catch {}
     } else if (this.platform === 'ios-switch' && this.iosPool) {
       try { this.iosPool.fire(); } catch {}
+    }
+  }
+
+  /**
+   * Fire haptic for drag — no cancel()/vibrate(0), so the motor isn't killed
+   * between rapid touchmove fires. Velocity scales pulse count (1–3):
+   * faster drag = more taps per fire = stronger tactile feel.
+   */
+  fireDragTick(intensity: number, velocity: number): void {
+    const taps = Math.max(1, Math.min(3, Math.ceil(velocity / 400)));
+    if (this.platform === 'vibration') {
+      // Single pulse scaled by intensity + velocity, long enough to feel (12–25ms)
+      const dur = Math.max(12, Math.min(25, Math.round(15 * intensity + velocity / 200)));
+      if (taps === 1) {
+        try { navigator.vibrate(dur); } catch {}
+      } else {
+        // Multi-pulse: [on, gap, on, gap, on] — rapid burst
+        const pat: number[] = [];
+        for (let i = 0; i < taps; i++) { if (i > 0) pat.push(6); pat.push(dur); }
+        try { navigator.vibrate(pat); } catch {}
+      }
+    } else if (this.platform === 'ios-switch' && this.iosPool) {
+      try { for (let i = 0; i < taps; i++) this.iosPool.fire(); } catch {}
     }
   }
 

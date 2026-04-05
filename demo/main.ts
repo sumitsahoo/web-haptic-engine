@@ -253,7 +253,7 @@ function render(): void {
 
   const dragH = new DragHaptics(engine, {
     fireDist: 18,
-    preset: 'tick',
+    impulse: 'tick',
     intensity,
     onTick: (vel: number, ticks: number) => {
       sv.textContent = String(Math.round(vel))
