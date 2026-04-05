@@ -142,32 +142,21 @@ function render(): void {
   const app = document.getElementById('app')!
   app.innerHTML = `
     <div class="hdr">
-      <h1>Haptics Engine <em>v5.2</em></h1>
-      <p>Touchmove-driven drag haptics · Impulse buffers · ${Object.keys(presets).length} presets</p>
+      <h1>Web Haptic Engine</h1>
+      <p>Touch-driven haptic feedback with audio layering for richer, more immersive interactions across ${Object.keys(presets).length} built-in presets.</p>
       <div class="badge"><span class="d ${platformOk ? 'ok' : 'no'}"></span>${platformLabel}</div>
     </div>
 
     <div class="sec">
-      <div class="info">
-        <b>How drag haptics work:</b> touchstart fires the first haptic tick. Each touchmove checks if the finger moved ≥18px since the last fire — if so, fires haptic + audio. Every fire happens inside a user gesture (touchstart/touchmove), so iOS Taptic and audio work reliably. Faster drag = more ticks.
-      </div>
-    </div>
-
-    <div class="sec">
-      <div class="ctrl">
+      <div class="ctrl ctrls-group">
         <div class="row">
-          <div><div class="l">Audio</div><div class="sub">Controls audio for presets and drag</div></div>
+          <div><div class="l">Audio Layer</div><div class="sub">Synthesized audio reinforces each haptic event</div></div>
           <div class="sw ${audioOn ? 'on' : ''}" id="at"><div class="k"></div></div>
         </div>
-      </div>
-    </div>
-
-    <div class="sec">
-      <div class="ctrl">
+        <div class="ctrl-divider"></div>
         <div class="sl-row"><span class="t">Intensity</span><span class="v" id="iv">${intensity.toFixed(2)}</span></div>
         <input type="range" id="ir" min="0" max="100" value="${intensity * 100}">
-      </div>
-      <div class="ctrl">
+        <div class="ctrl-divider"></div>
         <div class="sl-row"><span class="t">Audio Volume</span><span class="v" id="gv">${audioGain.toFixed(2)}</span></div>
         <input type="range" id="gr" min="0" max="100" value="${audioGain * 100}">
       </div>
