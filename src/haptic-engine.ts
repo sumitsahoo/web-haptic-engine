@@ -41,7 +41,7 @@ export interface HapticPreset {
 }
 
 export type HapticInput = number | string | HapticPattern | HapticPreset;
-export interface TriggerOptions { intensity?: number; audio?: boolean; }
+export interface TriggerOptions { intensity?: number; audio?: boolean; skipThrottle?: boolean; }
 export interface HapticsEngineOptions {
   debug?: boolean;
   throttleMs?: number;
@@ -310,8 +310,8 @@ function iosPlan(vibs: Vibration[], pr: HapticPreset | null, di: number): { tick
 export interface DragHapticsOptions {
   /** Minimum px moved since last fire to trigger next haptic (default: 18). */
   fireDist?: number;
-  /** Impulse type for audio (default: 'tick'). */
-  impulse?: ImpulseType;
+  /** Preset to trigger on each drag tick (default: 'tick'). */
+  preset?: string;
   /** Intensity (default: 0.6). */
   intensity?: number;
   /** Callback on each haptic fire. */
@@ -336,7 +336,7 @@ export class DragHaptics {
     this.engine = engine;
     this.opts = {
       fireDist: options.fireDist ?? DRAG_FIRE_DIST,
-      impulse: options.impulse ?? 'tick',
+      preset: options.preset ?? 'tick',
       intensity: options.intensity ?? 0.6,
       onTick: options.onTick,
     };
@@ -417,11 +417,8 @@ export class DragHaptics {
   private fireTick(): void {
     const velocity = this.getVelocity();
 
-    // Haptic — velocity scales tap count (1-4) for stronger drag feel
-    this.engine.fireHapticTick(this.opts.intensity, velocity);
-
-    // Audio — respects the engine's audio toggle (no force)
-    this.engine.fireImpulse(this.opts.impulse, this.opts.intensity);
+    // Same code path as button presses — trigger the preset directly
+    this.engine.trigger(this.opts.preset, { intensity: this.opts.intensity, skipThrottle: true });
 
     this.lastFireX = this.curX;
     this.lastFireY = this.curY;
@@ -480,7 +477,9 @@ export class HapticsEngine {
   async trigger(input?: HapticInput, options?: TriggerOptions): Promise<void> {
     if (!this.enabled) return;
     const now = performance.now();
-    if (now - this.lastTriggerTime < this.throttleMs) return;
+    if (!options?.skipThrottle) {
+      if (now - this.lastTriggerTime < this.throttleMs) return;
+    }
     this.lastTriggerTime = now;
     this.cancel();
     const r = this.resolveInput(input);
@@ -504,20 +503,12 @@ export class HapticsEngine {
     }
   }
 
-  /** Fire platform haptic tick(s). velocity (px/s) scales tap count for drag feel. */
-  fireHapticTick(intensity: number, velocity?: number): void {
-    const taps = velocity != null ? Math.max(1, Math.min(4, Math.ceil(velocity / 400))) : 1;
+  /** Fire one platform haptic tick. */
+  fireHapticTick(intensity: number): void {
     if (this.platform === 'vibration') {
-      if (taps === 1) {
-        try { navigator.vibrate(Math.max(1, Math.round(10 * intensity))); } catch {}
-      } else {
-        const d = Math.max(1, Math.round(8 * intensity));
-        const pat: number[] = [];
-        for (let i = 0; i < taps; i++) { if (i > 0) pat.push(5); pat.push(d); }
-        try { navigator.vibrate(pat); } catch {}
-      }
+      try { navigator.vibrate(Math.max(1, Math.round(10 * intensity))); } catch {}
     } else if (this.platform === 'ios-switch' && this.iosPool) {
-      try { for (let i = 0; i < taps; i++) this.iosPool.fire(); } catch {}
+      try { this.iosPool.fire(); } catch {}
     }
   }
 
