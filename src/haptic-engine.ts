@@ -1,20 +1,21 @@
 // ============================================================================
-// haptic-engine.ts  v5.2
+// Haptic Engine
 //
-// DRAG HAPTICS — TOUCHMOVE-DRIVEN:
+// Cross-platform haptic feedback for the web.
 //
-// v5.0 used velocity-gated setTimeout intervals for drag haptics. On iOS,
-// setTimeout callbacks lose Safari's user activation context, so the iOS
-// switch checkbox toggle (Taptic feedback) stopped firing after the first tick.
+// Platform strategy:
+//   Android  — navigator.vibrate() works from any event context.
+//   iOS      — No Vibration API. Uses a hidden <input type="checkbox" switch>
+//              toggled via label.click() to trigger the Taptic Engine. This
+//              requires user activation (only granted by `click` / clean-tap
+//              `touchend` on iOS Safari). During continuous drag gestures no
+//              activation event fires, so drag haptics on iOS are audio-only.
+//   Other    — Falls back to audio impulses when no haptic API is available.
 //
-// v5.1 tried a constant 50ms setTimeout chain (like buzz), but setTimeout
-// callbacks still lack user activation on iOS — only the first tick worked.
-//
-// v5.2 fix: fire haptics directly from touchmove events. Every touchmove
-// IS a user gesture, so iOS Taptic (switch toggle) and audio both work
-// reliably on every fire. Distance threshold (18px) controls density:
-// fast drag = frequent ticks, slow drag = sparse ticks.
-//
+// Audio layer:
+//   A Web Audio synthesizer generates short impulse waveforms (tick, tap,
+//   thud, click, snap, buzz, confirm, harsh) that accompany or substitute
+//   for hardware haptics. Enabled by default, controllable per-trigger.
 // ============================================================================
 
 // ---------------------------------------------------------------------------
@@ -34,23 +35,30 @@ export type ImpulseType = 'tick' | 'tap' | 'thud' | 'click' | 'snap' | 'buzz' | 
 export interface HapticPreset {
   pattern: Vibration[];
   description?: string;
+  /** Number of iOS switch-checkbox toggles to fire for this preset. */
   iosTicks?: number;
+  /** Milliseconds between iOS ticks. Defaults to IOS_GAP (55 ms). */
   iosTickGap?: number;
+  /** Audio impulse type to play alongside the haptic. */
   impulse?: ImpulseType;
+  /** Easing curve applied to multi-step patterns. */
   easing?: keyof typeof easings;
 }
 
 export type HapticInput = number | string | HapticPattern | HapticPreset;
 export interface TriggerOptions { intensity?: number; audio?: boolean; }
-export interface HapticsEngineOptions {
+export interface HapticEngineOptions {
   debug?: boolean;
+  /** Minimum ms between trigger() calls. Default 25. */
   throttleMs?: number;
+  /** Enable audio impulse layer. Default true. */
   audioLayer?: boolean;
+  /** Master gain for audio impulses (0-1). Default 0.6. */
   audioGain?: number;
 }
 
 // ---------------------------------------------------------------------------
-// Easing
+// Easing functions
 // ---------------------------------------------------------------------------
 
 export const easings = {
@@ -71,17 +79,25 @@ export const easings = {
 // Constants
 // ---------------------------------------------------------------------------
 
+/** Maximum duration for a single vibration segment (ms). */
 const MAX_SEG_MS = 1000;
+/** Default intensity when none is specified. */
 const DEF_INTENSITY = 0.5;
+/** Default throttle between trigger() calls (ms). */
 const DEF_THROTTLE = 25;
+/** Default gap between iOS switch toggles (ms). */
 const IOS_GAP = 55;
+/** Minimum intensity for an iOS tick to be considered audible. */
 const IOS_MIN = 0.12;
-
-// Minimum px moved since last haptic fire to trigger the next one
+/** Minimum px moved since last drag haptic fire to trigger the next one. */
 const DRAG_FIRE_DIST = 18;
 
 // ---------------------------------------------------------------------------
 // Impulse Buffer Synthesizer
+//
+// Generates short AudioBuffers for each impulse type. Each waveform is a
+// combination of exponentially-decayed sine waves designed to mimic the
+// feel of physical haptic feedback through speakers/headphones.
 // ---------------------------------------------------------------------------
 
 class ImpulseLibrary {
@@ -100,6 +116,7 @@ class ImpulseLibrary {
     this.mk('harsh', sr, 0.030, t => { const f = 180, e = Math.exp(-t * 160); let s = 0; for (let h = 1; h <= 6; h++) s += Math.sin(2 * Math.PI * f * h * t) * (h % 2 === 0 ? 0.8 : 1) / h; return (s + Math.sin(2 * Math.PI * f * 1.07 * t) * e * 0.3) * e * 0.35; });
   }
 
+  /** Synthesize a named impulse buffer: peak-normalize samples from fn(t). */
   private mk(name: string, sr: number, dur: number, fn: (t: number) => number): void {
     const len = Math.ceil(sr * dur), buf = this.ctx.createBuffer(1, len, sr), d = buf.getChannelData(0);
     let pk = 0;
@@ -113,6 +130,9 @@ class ImpulseLibrary {
 
 // ---------------------------------------------------------------------------
 // Audio Impulse Layer
+//
+// Manages a shared AudioContext and plays impulse buffers on demand.
+// Must be unlock()'d from a user gesture before audio can play on iOS.
 // ---------------------------------------------------------------------------
 
 class AudioImpulseLayer {
@@ -123,6 +143,7 @@ class AudioImpulseLayer {
 
   constructor(gain: number = 0.6) { this.mg = gain; }
 
+  /** Play a silent buffer to unlock the AudioContext (call from user gesture). */
   unlock(): void {
     if (this.unlocked) return;
     try {
@@ -141,6 +162,7 @@ class AudioImpulseLayer {
     return this.ctx;
   }
 
+  /** Play a single impulse at the given intensity. */
   fire(type: ImpulseType, intensity: number): void {
     try {
       const ctx = this.ensureCtx();
@@ -156,6 +178,7 @@ class AudioImpulseLayer {
     } catch {}
   }
 
+  /** Play a sequence of impulses matching a Vibration[] pattern. */
   fireSequence(vibs: Vibration[], type: ImpulseType, intensity: number, ef?: EasingFn): void {
     let elapsed = 0;
     const count = vibs.length;
@@ -177,20 +200,31 @@ class AudioImpulseLayer {
 
 // ---------------------------------------------------------------------------
 // Presets
+//
+// Each preset defines:
+//   pattern     — Vibration[] for Android (navigator.vibrate)
+//   iosTicks    — Number of switch-checkbox toggles for iOS
+//   iosTickGap  — Delay between iOS toggles (ms)
+//   impulse     — Audio impulse type to accompany the haptic
+//   easing      — Optional easing for multi-step patterns
 // ---------------------------------------------------------------------------
 
 export const presets: Record<string, HapticPreset> = {
+  // Notification
   success:   { description: 'Ascending double-tap', pattern: [{ duration: 30, intensity: .5 },{ delay: 65, duration: 45, intensity: 1 }], iosTicks: 2, iosTickGap: 80, impulse: 'confirm' },
   warning:   { description: 'Two hesitant taps', pattern: [{ duration: 40, intensity: .7 },{ delay: 120, duration: 35, intensity: .5 }], iosTicks: 2, iosTickGap: 140, impulse: 'harsh' },
   error:     { description: 'Three rapid harsh taps', pattern: [{ duration: 45, intensity: .9 },{ delay: 50, duration: 45, intensity: .9 },{ delay: 50, duration: 45, intensity: .9 }], iosTicks: 3, iosTickGap: 65, impulse: 'harsh' },
   confirm:   { description: 'Strong double-tap confirm', pattern: [{ duration: 35, intensity: .9 },{ delay: 100, duration: 50, intensity: 1 }], iosTicks: 2, iosTickGap: 110, impulse: 'confirm' },
   reject:    { description: 'Harsh staccato triple', pattern: [{ duration: 30, intensity: 1 },{ delay: 30, duration: 30, intensity: 1 },{ delay: 30, duration: 50, intensity: 1 }], iosTicks: 3, iosTickGap: 45, impulse: 'harsh' },
+  // Impact
   light:     { description: 'Single light tap', pattern: [{ duration: 12, intensity: .35 }], iosTicks: 1, impulse: 'tick' },
   medium:    { description: 'Moderate tap', pattern: [{ duration: 28, intensity: .65 }], iosTicks: 1, impulse: 'tap' },
   heavy:     { description: 'Strong tap', pattern: [{ duration: 40, intensity: 1 }], iosTicks: 2, iosTickGap: 30, impulse: 'thud' },
   soft:      { description: 'Cushioned tap', pattern: [{ duration: 45, intensity: .45 }], iosTicks: 1, impulse: 'tap' },
   rigid:     { description: 'Hard crisp snap', pattern: [{ duration: 8, intensity: 1 }], iosTicks: 1, impulse: 'snap' },
+  // Selection
   selection: { description: 'Subtle tick', pattern: [{ duration: 6, intensity: .25 }], iosTicks: 1, impulse: 'tick' },
+  // Custom
   tick:      { description: 'Crisp tick', pattern: [{ duration: 10, intensity: .5 }], iosTicks: 1, impulse: 'click' },
   click:     { description: 'Ultra-short click', pattern: [{ duration: 5, intensity: .8 }], iosTicks: 1, impulse: 'click' },
   snap:      { description: 'Sharp snap', pattern: [{ duration: 6, intensity: 1 }], iosTicks: 1, impulse: 'snap' },
@@ -206,7 +240,12 @@ export const presets: Record<string, HapticPreset> = {
 };
 
 // ---------------------------------------------------------------------------
-// Platform detection
+// Platform Detection
+//
+// Three modes:
+//   'vibration'  — Android / browsers with navigator.vibrate()
+//   'ios-switch' — iOS Safari (no vibrate, touch-capable, switch attr supported)
+//   'none'       — SSR or desktop without haptic support
 // ---------------------------------------------------------------------------
 
 type Platform = 'vibration' | 'ios-switch' | 'none';
@@ -225,7 +264,10 @@ const detectPlatform = (): Platform => {
 };
 
 // ---------------------------------------------------------------------------
-// Android vibration
+// Android Vibration Pattern Builder
+//
+// Converts Vibration[] into a flat number[] for navigator.vibrate().
+// Applies intensity scaling and optional easing to each segment.
 // ---------------------------------------------------------------------------
 
 function buildAndroidPattern(vibs: Vibration[], di: number, ef?: EasingFn): number[] {
@@ -248,41 +290,70 @@ function buildAndroidPattern(vibs: Vibration[], di: number, ef?: EasingFn): numb
 }
 
 // ---------------------------------------------------------------------------
-// iOS switch pool
+// iOS Switch Checkbox Pool
+//
+// Creates hidden <input type="checkbox" switch> elements whose label.click()
+// toggles trigger the iOS Taptic Engine. A pool of 6 pairs avoids toggling
+// the same checkbox in rapid succession. Elements use opacity:0.01 at 1x1px
+// (kept in the render tree; display:none may cause iOS to skip the haptic).
 // ---------------------------------------------------------------------------
 
 class IOSSwitchPool {
-  private container: HTMLDivElement;
-  private pairs: Array<{ input: HTMLInputElement; label: HTMLLabelElement }> = [];
+  private labels: HTMLLabelElement[] = [];
   private nextIndex = 0;
 
   constructor() {
-    this.container = document.createElement('div');
-    Object.assign(this.container.style, {
-      position: 'fixed', top: '-9999px', left: '-9999px',
-      width: '1px', height: '1px', overflow: 'hidden',
-      opacity: '0', pointerEvents: 'none', contain: 'strict',
-    } satisfies Partial<CSSStyleDeclaration>);
-    this.container.setAttribute('aria-hidden', 'true');
-    document.body.appendChild(this.container);
     for (let i = 0; i < 6; i++) {
       const id = `__hp${i}_${Date.now()}`;
+
+      const label = document.createElement('label');
+      label.setAttribute('for', id);
+      label.style.position = 'fixed';
+      label.style.top = '0';
+      label.style.left = '0';
+      label.style.width = '1px';
+      label.style.height = '1px';
+      label.style.overflow = 'hidden';
+      label.style.opacity = '0.01';
+      label.style.pointerEvents = 'none';
+      label.style.userSelect = 'none';
+      label.setAttribute('aria-hidden', 'true');
+
       const input = document.createElement('input');
-      input.type = 'checkbox'; input.setAttribute('switch', ''); input.id = id; input.tabIndex = -1;
-      const label = document.createElement('label'); label.htmlFor = id;
-      this.container.appendChild(input); this.container.appendChild(label);
-      this.pairs.push({ input, label });
+      input.type = 'checkbox';
+      input.setAttribute('switch', '');
+      input.id = id;
+      input.tabIndex = -1;
+      // Reset styles and ensure native switch appearance for Taptic integration
+      input.style.all = 'initial';
+      input.style.appearance = 'auto';
+
+      label.appendChild(input);
+      document.body.appendChild(label);
+      this.labels.push(label);
     }
   }
 
+  /** Toggle the next switch in the pool to fire a single Taptic tick. */
   fire(): void {
-    const p = this.pairs[this.nextIndex];
-    this.nextIndex = (this.nextIndex + 1) % this.pairs.length;
-    p.label.click();
+    const label = this.labels[this.nextIndex];
+    this.nextIndex = (this.nextIndex + 1) % this.labels.length;
+    label.click();
   }
 
-  destroy(): void { this.container.remove(); this.pairs = []; }
+  destroy(): void {
+    for (const l of this.labels) l.remove();
+    this.labels = [];
+  }
 }
+
+// ---------------------------------------------------------------------------
+// iOS Tick Planner
+//
+// Determines how many switch toggles and at what intervals to fire for a
+// given preset on iOS. If the preset defines iosTicks/iosTickGap those are
+// used directly; otherwise ticks are inferred from the Vibration[] pattern.
+// ---------------------------------------------------------------------------
 
 function iosPlan(vibs: Vibration[], pr: HapticPreset | null, di: number): { ticks: number; gaps: number[] } {
   if (pr?.iosTicks !== undefined) {
@@ -304,22 +375,33 @@ function iosPlan(vibs: Vibration[], pr: HapticPreset | null, di: number): { tick
 }
 
 // ---------------------------------------------------------------------------
-// Drag Haptics — touchmove-driven (user activation on every fire)
+// Drag Haptics
+//
+// Binds touch events to an element and fires haptic/audio feedback as the
+// user drags. Feedback fires when the finger moves past a distance threshold
+// (fireDist, default 18px) or a time-based fallback (80ms with 2px min
+// movement) to ensure slow drags still feel responsive.
+//
+// Platform behaviour:
+//   Android — Full haptic (navigator.vibrate) + audio on every tick.
+//   iOS     — Audio ticks during the drag. Taptic fires on clean taps via
+//             touchend (iOS Safari only grants switch-checkbox activation
+//             from click/clean-tap touchend, not during continuous drags).
 // ---------------------------------------------------------------------------
 
 export interface DragHapticsOptions {
   /** Minimum px moved since last fire to trigger next haptic (default: 18). */
   fireDist?: number;
-  /** Impulse type for audio (default: 'tick'). */
+  /** Audio impulse type for drag ticks (default: 'tick'). */
   impulse?: ImpulseType;
-  /** Intensity (default: 0.6). */
+  /** Haptic/audio intensity 0-1 (default: 0.6). */
   intensity?: number;
-  /** Callback on each haptic fire. */
+  /** Callback fired on each drag tick with current velocity and tick count. */
   onTick?: (velocity: number, ticks: number) => void;
 }
 
 export class DragHaptics {
-  private engine: HapticsEngine;
+  private engine: HapticEngine;
   private opts: Required<Omit<DragHapticsOptions, 'onTick'>> & { onTick?: DragHapticsOptions['onTick'] };
   curX = 0;
   curY = 0;
@@ -330,7 +412,7 @@ export class DragHaptics {
   private tickCount = 0;
   private cleanup: (() => void)[] = [];
 
-  constructor(engine: HapticsEngine, options: DragHapticsOptions = {}) {
+  constructor(engine: HapticEngine, options: DragHapticsOptions = {}) {
     this.engine = engine;
     this.opts = {
       fireDist: options.fireDist ?? DRAG_FIRE_DIST,
@@ -340,6 +422,7 @@ export class DragHaptics {
     };
   }
 
+  /** Attach drag-haptic listeners to an element. Returns an unbind function. */
   bind(element: HTMLElement): () => void {
     const onStart = (e: TouchEvent) => {
       const t = e.touches[0];
@@ -348,7 +431,13 @@ export class DragHaptics {
       this.lastFireT = performance.now();
       this.active = true;
       this.tickCount = 0;
-      this.fireTick(0);
+
+      // Android: vibration API works from any event context
+      this.engine.fireDragTickIfVibration(this.opts.intensity, 0);
+      // Audio on all platforms
+      this.engine.fireImpulse(this.opts.impulse, this.opts.intensity);
+      this.tickCount++;
+      this.opts.onTick?.(0, this.tickCount);
     };
 
     const onMove = (e: TouchEvent) => {
@@ -357,29 +446,51 @@ export class DragHaptics {
       this.curX = t.clientX;
       this.curY = t.clientY;
 
-      if (this.distFromLastFire() >= this.opts.fireDist) {
-        // Compute velocity from distance and time since last fire
-        const now = performance.now();
-        const dt = (now - this.lastFireT) / 1000;
-        const dist = this.distFromLastFire();
+      const dist = this.distFromLastFire();
+      const now = performance.now();
+      const elapsed = now - this.lastFireT;
+
+      // Fire on distance threshold (fast drags) or time fallback (slow drags)
+      const SLOW_DRAG_INTERVAL = 80;
+      const JITTER_THRESHOLD = 2;
+
+      if (dist >= this.opts.fireDist || (dist >= JITTER_THRESHOLD && elapsed >= SLOW_DRAG_INTERVAL)) {
+        const dt = elapsed / 1000;
         const velocity = dt > 0.001 ? dist / dt : 0;
-        this.fireTick(velocity);
+
+        this.engine.fireDragTickIfVibration(this.opts.intensity, velocity);
+        this.engine.fireImpulse(this.opts.impulse, this.opts.intensity);
+
+        this.lastFireX = this.curX;
+        this.lastFireY = this.curY;
+        this.lastFireT = performance.now();
+
+        this.tickCount++;
+        this.opts.onTick?.(velocity, this.tickCount);
       }
     };
 
-    const onEnd = () => { this.active = false; };
+    const onEnd = () => {
+      if (!this.active) return;
+      this.active = false;
+      // On iOS clean taps, touchend grants activation so Taptic fires.
+      // On drag-end touchend, iOS withholds activation — only audio plays.
+      this.engine.trigger('selection', { intensity: this.opts.intensity });
+    };
+
+    const onCancel = () => { this.active = false; };
 
     element.addEventListener('touchstart', onStart, { passive: true });
     element.addEventListener('touchmove', onMove, { passive: true });
     element.addEventListener('touchend', onEnd, { passive: true });
-    element.addEventListener('touchcancel', onEnd, { passive: true });
+    element.addEventListener('touchcancel', onCancel, { passive: true });
 
     const unbind = () => {
       element.removeEventListener('touchstart', onStart);
       element.removeEventListener('touchmove', onMove);
       element.removeEventListener('touchend', onEnd);
-      element.removeEventListener('touchcancel', onEnd);
-      onEnd();
+      element.removeEventListener('touchcancel', onCancel);
+      this.active = false;
     };
     this.cleanup.push(unbind);
     return unbind;
@@ -391,22 +502,7 @@ export class DragHaptics {
     return Math.sqrt(dx * dx + dy * dy);
   }
 
-  private fireTick(velocity: number): void {
-    // Fire haptic motor directly — no cancel(), no vibrate(0) overhead.
-    // Velocity scales pulse count so faster drag = stronger feel.
-    this.engine.fireDragTick(this.opts.intensity, velocity);
-
-    // Audio — respects the engine's audio toggle
-    this.engine.fireImpulse(this.opts.impulse, this.opts.intensity);
-
-    this.lastFireX = this.curX;
-    this.lastFireY = this.curY;
-    this.lastFireT = performance.now();
-
-    this.tickCount++;
-    this.opts.onTick?.(velocity, this.tickCount);
-  }
-
+  /** Unbind all elements and stop tracking. */
   destroyAll(): void {
     this.active = false;
     this.cleanup.forEach(fn => fn());
@@ -415,17 +511,20 @@ export class DragHaptics {
 }
 
 // ---------------------------------------------------------------------------
-// Sequence
+// Sequence types
 // ---------------------------------------------------------------------------
 
 export interface SequenceStep { preset: string; delay?: number; intensity?: number; }
 export interface SequenceOptions { repeat?: number; repeatGap?: number; }
 
 // ---------------------------------------------------------------------------
-// Main Engine
+// HapticEngine — Main API
+//
+// Orchestrates platform-specific haptic feedback (Android vibration or iOS
+// switch-checkbox toggles) alongside synthesized audio impulses.
 // ---------------------------------------------------------------------------
 
-export class HapticsEngine {
+export class HapticEngine {
   private platform: Platform;
   private iosPool: IOSSwitchPool | null = null;
   private audio: AudioImpulseLayer | null = null;
@@ -435,18 +534,21 @@ export class HapticsEngine {
   private lastTriggerTime = 0;
   private activeAbort: AbortController | null = null;
 
+  /** True if the device supports Android-style navigator.vibrate(). */
   static readonly supportsVibration: boolean = hasVib();
+  /** True if the device supports iOS switch-checkbox haptics. */
   static readonly supportsIOSHaptics: boolean = typeof document !== 'undefined' ? isIOS() : false;
-  static readonly isSupported: boolean = HapticsEngine.supportsVibration || HapticsEngine.supportsIOSHaptics;
+  /** True if any form of haptic feedback is available. */
+  static readonly isSupported: boolean = HapticEngine.supportsVibration || HapticEngine.supportsIOSHaptics;
 
-  constructor(options: HapticsEngineOptions = {}) {
+  constructor(options: HapticEngineOptions = {}) {
     this.throttleMs = options.throttleMs ?? DEF_THROTTLE;
     this.useAudio = options.audioLayer ?? true;
     this.platform = detectPlatform();
     if (this.platform === 'ios-switch') this.iosPool = new IOSSwitchPool();
-    // Always create audio — DragHaptics needs it even when preset audio is off
     this.audio = new AudioImpulseLayer(options.audioGain ?? 0.6);
 
+    // Unlock AudioContext on first user gesture
     if (typeof document !== 'undefined') {
       const unlock = () => { this.audio?.unlock(); };
       document.addEventListener('touchstart', unlock, { once: true, passive: true, capture: true });
@@ -454,6 +556,10 @@ export class HapticsEngine {
     }
   }
 
+  /**
+   * Fire a haptic + audio pattern. Input can be a preset name, duration (ms),
+   * Vibration[], number[] (alternating on/off), or a HapticPreset object.
+   */
   async trigger(input?: HapticInput, options?: TriggerOptions): Promise<void> {
     if (!this.enabled) return;
     const now = performance.now();
@@ -473,7 +579,7 @@ export class HapticsEngine {
     }
   }
 
-  /** Fire audio impulse. force=true bypasses the audio toggle. */
+  /** Play an audio impulse. Set force=true to bypass the audio-enabled toggle. */
   fireImpulse(type: ImpulseType, intensity: number, force?: boolean): void {
     if ((force || this.useAudio) && this.audio) {
       this.audio.unlock();
@@ -481,7 +587,7 @@ export class HapticsEngine {
     }
   }
 
-  /** Fire one platform haptic tick. */
+  /** Fire a single platform haptic tick (short vibrate or single iOS switch toggle). */
   fireHapticTick(intensity: number): void {
     if (this.platform === 'vibration') {
       try { navigator.vibrate(Math.max(1, Math.round(10 * intensity))); } catch {}
@@ -491,28 +597,33 @@ export class HapticsEngine {
   }
 
   /**
-   * Fire haptic for drag — no cancel()/vibrate(0), so the motor isn't killed
-   * between rapid touchmove fires. Velocity scales pulse count (1–3):
-   * faster drag = more taps per fire = stronger tactile feel.
+   * Fire a drag-optimized haptic tick. Skips cancel()/vibrate(0) overhead.
+   * Android: velocity scales pulse duration (12-25ms) and count (1-3 taps).
+   * iOS: single switch toggle (requires user activation to produce Taptic).
    */
   fireDragTick(intensity: number, velocity: number): void {
     const taps = Math.max(1, Math.min(3, Math.ceil(velocity / 400)));
     if (this.platform === 'vibration') {
-      // Single pulse scaled by intensity + velocity, long enough to feel (12–25ms)
       const dur = Math.max(12, Math.min(25, Math.round(15 * intensity + velocity / 200)));
       if (taps === 1) {
         try { navigator.vibrate(dur); } catch {}
       } else {
-        // Multi-pulse: [on, gap, on, gap, on] — rapid burst
         const pat: number[] = [];
         for (let i = 0; i < taps; i++) { if (i > 0) pat.push(6); pat.push(dur); }
         try { navigator.vibrate(pat); } catch {}
       }
     } else if (this.platform === 'ios-switch' && this.iosPool) {
-      try { for (let i = 0; i < taps; i++) this.iosPool.fire(); } catch {}
+      try { this.iosPool.fire(); } catch {}
     }
   }
 
+  /** Fire a drag tick only on Android (vibration platform). No-op on iOS. */
+  fireDragTickIfVibration(intensity: number, velocity: number): void {
+    if (this.platform !== 'vibration') return;
+    this.fireDragTick(intensity, velocity);
+  }
+
+  /** Play a sequence of preset steps with optional delays and repeats. */
   async sequence(steps: SequenceStep[], options?: SequenceOptions): Promise<void> {
     const repeat = options?.repeat ?? 1, repeatGap = options?.repeatGap ?? 200;
     const ac = new AbortController(); this.activeAbort = ac;
@@ -528,16 +639,23 @@ export class HapticsEngine {
     }
   }
 
+  /** Create a DragHaptics instance bound to this engine. */
   drag(options?: DragHapticsOptions): DragHaptics { return new DragHaptics(this, options); }
+
+  /** Cancel any in-progress pattern or vibration. */
   cancel(): void { this.activeAbort?.abort(); this.activeAbort = null; if (this.platform === 'vibration' && hasVib()) navigator.vibrate(0); }
+
   setEnabled(e: boolean): void { this.enabled = e; if (!e) this.cancel(); }
   get isEnabled(): boolean { return this.enabled; }
   setAudioLayer(e: boolean): void { this.useAudio = e; }
   setAudioGain(g: number): void { this.audio?.setGain(g); }
   setThrottle(ms: number): void { this.throttleMs = Math.max(0, ms); }
   registerPreset(name: string, preset: HapticPreset): void { presets[name] = preset; }
+
+  /** Clean up all resources (audio context, iOS DOM elements). */
   destroy(): void { this.cancel(); this.iosPool?.destroy(); this.iosPool = null; this.audio?.destroy(); this.audio = null; }
 
+  /** Resolve any HapticInput into a Vibration[] and optional preset metadata. */
   private resolveInput(input?: HapticInput): { vibrations: Vibration[]; preset: HapticPreset | null } {
     if (input == null) return { vibrations: presets.medium.pattern, preset: presets.medium };
     if (typeof input === 'string') { const p = presets[input]; if (!p) { console.warn(`[haptics] Unknown: "${input}"`); return { vibrations: [], preset: null }; } return { vibrations: p.pattern, preset: p }; }
@@ -551,6 +669,7 @@ export class HapticsEngine {
     return { vibrations: [], preset: null };
   }
 
+  /** Android: convert Vibration[] to flat pattern and vibrate for its duration. */
   private async fireAndroid(vibs: Vibration[], di: number, ef?: EasingFn): Promise<void> {
     const pat = buildAndroidPattern(vibs, di, ef); if (!pat.length) return;
     navigator.vibrate(pat);
@@ -558,6 +677,7 @@ export class HapticsEngine {
     if (total > 0) { const ac = new AbortController(); this.activeAbort = ac; await this.sleep(total, ac.signal); }
   }
 
+  /** iOS: fire switch-checkbox toggles with gaps between them. */
   private async fireIOS(vibs: Vibration[], pr: HapticPreset | null, di: number): Promise<void> {
     if (!this.iosPool) return;
     const plan = iosPlan(vibs, pr, di); if (plan.ticks <= 0) return;
@@ -569,6 +689,7 @@ export class HapticsEngine {
     }
   }
 
+  /** Cancellable setTimeout wrapped in a Promise. */
   private sleep(ms: number, signal: AbortSignal): Promise<void> {
     return new Promise(resolve => {
       if (signal.aborted) { resolve(); return; }
@@ -579,9 +700,13 @@ export class HapticsEngine {
 }
 
 // ---------------------------------------------------------------------------
-// Convenience
+// Convenience helpers
 // ---------------------------------------------------------------------------
 
-let _default: HapticsEngine | null = null;
-export function getDefaultEngine(opts?: HapticsEngineOptions): HapticsEngine { if (!_default) _default = new HapticsEngine(opts); return _default; }
+let _default: HapticEngine | null = null;
+
+/** Get or create the shared default engine instance. */
+export function getDefaultEngine(opts?: HapticEngineOptions): HapticEngine { if (!_default) _default = new HapticEngine(opts); return _default; }
+
+/** Fire a one-shot haptic using the default engine. */
 export async function haptic(input?: HapticInput, options?: TriggerOptions): Promise<void> { return getDefaultEngine().trigger(input, options); }

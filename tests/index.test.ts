@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vite-plus/test'
 import {
   DragHaptics,
   easings,
-  HapticsEngine,
+  HapticEngine,
   presets,
 } from '../src'
 
@@ -70,16 +70,16 @@ describe('easings', () => {
   })
 })
 
-describe('HapticsEngine', () => {
+describe('HapticEngine', () => {
   it('can be instantiated', () => {
-    const engine = new HapticsEngine()
+    const engine = new HapticEngine()
     expect(engine).toBeDefined()
     expect(engine.isEnabled).toBe(true)
     engine.destroy()
   })
 
   it('can be disabled and re-enabled', () => {
-    const engine = new HapticsEngine()
+    const engine = new HapticEngine()
     engine.setEnabled(false)
     expect(engine.isEnabled).toBe(false)
     engine.setEnabled(true)
@@ -88,7 +88,7 @@ describe('HapticsEngine', () => {
   })
 
   it('accepts custom options', () => {
-    const engine = new HapticsEngine({
+    const engine = new HapticEngine({
       throttleMs: 50,
       audioLayer: false,
       audioGain: 0.3,
@@ -98,7 +98,7 @@ describe('HapticsEngine', () => {
   })
 
   it('trigger resolves without errors for preset names', async () => {
-    const engine = new HapticsEngine({ audioLayer: false })
+    const engine = new HapticEngine({ audioLayer: false })
     await engine.trigger('light')
     await engine.trigger('medium')
     await engine.trigger('heavy')
@@ -106,32 +106,32 @@ describe('HapticsEngine', () => {
   })
 
   it('trigger resolves without errors for number input', async () => {
-    const engine = new HapticsEngine({ audioLayer: false })
+    const engine = new HapticEngine({ audioLayer: false })
     await engine.trigger(50)
     engine.destroy()
   })
 
   it('trigger resolves without errors for pattern array', async () => {
-    const engine = new HapticsEngine({ audioLayer: false })
+    const engine = new HapticEngine({ audioLayer: false })
     await engine.trigger([20, 10, 30])
     engine.destroy()
   })
 
   it('trigger resolves without errors for vibration array', async () => {
-    const engine = new HapticsEngine({ audioLayer: false })
+    const engine = new HapticEngine({ audioLayer: false })
     await engine.trigger([{ duration: 20, intensity: 0.5 }, { delay: 30, duration: 40 }])
     engine.destroy()
   })
 
   it('trigger resolves without errors for null/undefined', async () => {
-    const engine = new HapticsEngine({ audioLayer: false })
+    const engine = new HapticEngine({ audioLayer: false })
     await engine.trigger(undefined)
     await engine.trigger()
     engine.destroy()
   })
 
   it('warns on unknown preset', async () => {
-    const engine = new HapticsEngine({ audioLayer: false })
+    const engine = new HapticEngine({ audioLayer: false })
     const warnings: string[] = []
     const origWarn = console.warn
     console.warn = (msg: string) => warnings.push(msg)
@@ -142,13 +142,13 @@ describe('HapticsEngine', () => {
   })
 
   it('cancel does not throw', () => {
-    const engine = new HapticsEngine()
+    const engine = new HapticEngine()
     expect(() => engine.cancel()).not.toThrow()
     engine.destroy()
   })
 
   it('setThrottle adjusts throttle', async () => {
-    const engine = new HapticsEngine({ audioLayer: false })
+    const engine = new HapticEngine({ audioLayer: false })
     engine.setThrottle(0)
     await engine.trigger('tick')
     await engine.trigger('tick')
@@ -156,7 +156,7 @@ describe('HapticsEngine', () => {
   })
 
   it('registerPreset adds a custom preset', async () => {
-    const engine = new HapticsEngine({ audioLayer: false })
+    const engine = new HapticEngine({ audioLayer: false })
     engine.registerPreset('custom', {
       pattern: [{ duration: 10, intensity: 0.5 }],
       impulse: 'tick',
@@ -168,7 +168,7 @@ describe('HapticsEngine', () => {
   })
 
   it('sequence resolves without errors', async () => {
-    const engine = new HapticsEngine({ audioLayer: false })
+    const engine = new HapticEngine({ audioLayer: false })
     engine.setThrottle(0)
     await engine.sequence([
       { preset: 'tick' },
@@ -178,7 +178,7 @@ describe('HapticsEngine', () => {
   })
 
   it('setAudioLayer and setAudioGain do not throw', () => {
-    const engine = new HapticsEngine()
+    const engine = new HapticEngine()
     expect(() => engine.setAudioLayer(false)).not.toThrow()
     expect(() => engine.setAudioGain(0.8)).not.toThrow()
     engine.destroy()
@@ -187,7 +187,7 @@ describe('HapticsEngine', () => {
 
 describe('DragHaptics', () => {
   it('can be created from engine.drag()', () => {
-    const engine = new HapticsEngine()
+    const engine = new HapticEngine()
     const drag = engine.drag({ fireDist: 20, impulse: 'click', intensity: 0.8 })
     expect(drag).toBeInstanceOf(DragHaptics)
     drag.destroyAll()
@@ -197,8 +197,8 @@ describe('DragHaptics', () => {
 
 describe('static properties', () => {
   it('exposes static support flags', () => {
-    expect(typeof HapticsEngine.supportsVibration).toBe('boolean')
-    expect(typeof HapticsEngine.supportsIOSHaptics).toBe('boolean')
-    expect(typeof HapticsEngine.isSupported).toBe('boolean')
+    expect(typeof HapticEngine.supportsVibration).toBe('boolean')
+    expect(typeof HapticEngine.supportsIOSHaptics).toBe('boolean')
+    expect(typeof HapticEngine.isSupported).toBe('boolean')
   })
 })

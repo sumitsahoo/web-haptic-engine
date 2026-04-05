@@ -1,6 +1,6 @@
 import {
   DragHaptics,
-  HapticsEngine,
+  HapticEngine,
   presets,
   type HapticPreset,
   type ImpulseType,
@@ -36,7 +36,7 @@ const platformOk = hasVib || isIOSSwitch
 // Engine
 // ---------------------------------------------------------------------------
 
-const engine = new HapticsEngine({ throttleMs: 15, audioLayer: true, audioGain: 0.6 })
+const engine = new HapticEngine({ throttleMs: 15, audioLayer: true, audioGain: 0.6 })
 
 let intensity = 0.6
 let audioGain = 0.6
