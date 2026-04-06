@@ -316,10 +316,10 @@ web-haptic-engine/
 
 ## 📄 License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **MIT License** — feel free to use it for both personal and commercial purposes. See the [LICENSE](LICENSE) file for details.
 
 ---
 
-<div align="center">
-  <sub>Built with ❤️ using TypeScript and Web Audio API</sub>
-</div>
+<p align="center">
+  Built with ❤️ by <a href="https://github.com/sumitsahoo">Sumit Sahoo</a>
+</p>
