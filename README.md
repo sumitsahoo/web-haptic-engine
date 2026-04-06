@@ -6,6 +6,7 @@
   Supports Android vibration, iOS Taptic feedback, audio impulse synthesis, drag haptics, and 23 built-in presets.</p>
 
   <p>
+    <a href="https://www.npmjs.com/package/web-haptic-engine"><img src="https://img.shields.io/npm/v/web-haptic-engine" alt="npm version" /></a>
     <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-yellow.svg" alt="MIT License" /></a>
     <img src="https://img.shields.io/badge/platform-web-blue" alt="Platform" />
     <img src="https://img.shields.io/badge/typescript-strict-blue" alt="TypeScript" />
