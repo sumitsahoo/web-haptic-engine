@@ -1,16 +1,24 @@
 // ---------------------------------------------------------------------------
 // Drag Haptics
 //
-// Binds touch events to an element and fires haptic/audio feedback as the
-// user drags. Feedback fires when the finger moves past a distance threshold
-// (fireDist, default 18px) or a time-based fallback (80ms with 2px min
-// movement) to ensure slow drags still feel responsive.
+// Binds touch and mouse events to an element and fires haptic/audio feedback
+// as the user drags. Feedback fires when the pointer moves past a distance
+// threshold (fireDist, default 18px) or a time-based fallback (80ms with
+// 2px min movement) to ensure slow drags still feel responsive.
+//
+// Input handling:
+//   Touch events are used on touch-capable devices (iOS, Android) to
+//   preserve native haptic integration. Mouse events (mousedown/mousemove/
+//   mouseup) handle desktop trackpad and mouse drags. To prevent double-
+//   firing on devices that emit both touch and mouse events, mouse handlers
+//   are skipped when a touch sequence is active.
 //
 // Platform behaviour:
 //   Android — Full haptic (navigator.vibrate) + audio on every tick.
 //   iOS     — Audio ticks during the drag. Taptic fires on clean taps via
 //             touchend (iOS Safari only grants switch-checkbox activation
 //             from click/clean-tap touchend, not during continuous drags).
+//   Desktop — Audio impulses only (no vibration API).
 // ---------------------------------------------------------------------------
 
 import { DRAG_FIRE_DIST } from "../core";
@@ -30,6 +38,8 @@ export class DragHaptics {
   private active = false;
   private tickCount = 0;
   private cleanup: (() => void)[] = [];
+  /** Set during a touch sequence to prevent mouse handlers from double-firing. */
+  private touchActive = false;
 
   constructor(engine: HapticEngine, options: DragHapticsOptions = {}) {
     this.engine = engine;
@@ -43,10 +53,11 @@ export class DragHaptics {
 
   /** Attach drag-haptic listeners to an element. Returns an unbind function. */
   bind(element: HTMLElement): () => void {
-    const onStart = (e: TouchEvent) => {
-      const t = e.touches[0];
-      this.curX = this.lastFireX = t.clientX;
-      this.curY = this.lastFireY = t.clientY;
+    // --- Shared drag logic ---
+
+    const startDrag = (x: number, y: number) => {
+      this.curX = this.lastFireX = x;
+      this.curY = this.lastFireY = y;
       this.lastFireT = performance.now();
       this.active = true;
       this.tickCount = 0;
@@ -59,11 +70,10 @@ export class DragHaptics {
       this.opts.onTick?.(0, this.tickCount);
     };
 
-    const onMove = (e: TouchEvent) => {
+    const moveDrag = (x: number, y: number) => {
       if (!this.active) return;
-      const t = e.touches[0];
-      this.curX = t.clientX;
-      this.curY = t.clientY;
+      this.curX = x;
+      this.curY = y;
 
       const dist = this.distFromLastFire();
       const now = performance.now();
@@ -92,7 +102,7 @@ export class DragHaptics {
       }
     };
 
-    const onEnd = () => {
+    const endDrag = () => {
       if (!this.active) return;
       this.active = false;
       // On iOS clean taps, touchend grants activation so Taptic fires.
@@ -100,20 +110,73 @@ export class DragHaptics {
       this.engine.trigger("selection", { intensity: this.opts.intensity });
     };
 
-    const onCancel = () => {
-      this.active = false;
+    // --- Touch events (iOS / Android) ---
+
+    const onTouchStart = (e: TouchEvent) => {
+      this.touchActive = true;
+      const t = e.touches[0];
+      startDrag(t.clientX, t.clientY);
     };
 
-    element.addEventListener("touchstart", onStart, { passive: true });
-    element.addEventListener("touchmove", onMove, { passive: true });
-    element.addEventListener("touchend", onEnd, { passive: true });
-    element.addEventListener("touchcancel", onCancel, { passive: true });
+    const onTouchMove = (e: TouchEvent) => {
+      const t = e.touches[0];
+      moveDrag(t.clientX, t.clientY);
+    };
+
+    const onTouchEnd = () => {
+      endDrag();
+      // Delay clearing touchActive so that the synthetic mousedown
+      // fired after touchend is still suppressed.
+      setTimeout(() => {
+        this.touchActive = false;
+      }, 400);
+    };
+
+    const onTouchCancel = () => {
+      this.active = false;
+      this.touchActive = false;
+    };
+
+    // --- Mouse events (desktop trackpad / mouse) ---
+
+    const onMouseDown = (e: MouseEvent) => {
+      // Skip if this is a touch-originated mouse event
+      if (this.touchActive) return;
+      // Only primary button
+      if (e.button !== 0) return;
+      startDrag(e.clientX, e.clientY);
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (this.touchActive) return;
+      moveDrag(e.clientX, e.clientY);
+    };
+
+    const onMouseUp = () => {
+      if (this.touchActive) return;
+      endDrag();
+    };
+
+    // Touch listeners on the element
+    element.addEventListener("touchstart", onTouchStart, { passive: true });
+    element.addEventListener("touchmove", onTouchMove, { passive: true });
+    element.addEventListener("touchend", onTouchEnd, { passive: true });
+    element.addEventListener("touchcancel", onTouchCancel, { passive: true });
+
+    // Mouse listeners: mousedown on element, move/up on window to track
+    // drags that leave the element bounds (matches trackpad UX expectations).
+    element.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
 
     const unbind = () => {
-      element.removeEventListener("touchstart", onStart);
-      element.removeEventListener("touchmove", onMove);
-      element.removeEventListener("touchend", onEnd);
-      element.removeEventListener("touchcancel", onCancel);
+      element.removeEventListener("touchstart", onTouchStart);
+      element.removeEventListener("touchmove", onTouchMove);
+      element.removeEventListener("touchend", onTouchEnd);
+      element.removeEventListener("touchcancel", onTouchCancel);
+      element.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
       this.active = false;
     };
     this.cleanup.push(unbind);

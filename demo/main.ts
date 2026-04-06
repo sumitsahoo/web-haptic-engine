@@ -304,9 +304,14 @@ function render(): void {
     },
   });
 
+  // --- Touch visual tracking ---
+
+  let touchDragging = false;
+
   da.addEventListener(
     "touchstart",
     (e: TouchEvent) => {
+      touchDragging = true;
       const t = e.touches[0];
       const r = da.getBoundingClientRect();
       dd.style.left = `${t.clientX - r.left}px`;
@@ -335,6 +340,9 @@ function render(): void {
     () => {
       dd.classList.remove("on");
       da.classList.remove("dragging");
+      setTimeout(() => {
+        touchDragging = false;
+      }, 400);
     },
     { passive: true },
   );
@@ -344,9 +352,40 @@ function render(): void {
     () => {
       dd.classList.remove("on");
       da.classList.remove("dragging");
+      touchDragging = false;
     },
     { passive: true },
   );
+
+  // --- Mouse visual tracking (desktop trackpad / mouse) ---
+
+  let mouseDragging = false;
+
+  da.addEventListener("mousedown", (e: MouseEvent) => {
+    if (touchDragging || e.button !== 0) return;
+    mouseDragging = true;
+    const r = da.getBoundingClientRect();
+    dd.style.left = `${e.clientX - r.left}px`;
+    dd.style.top = `${e.clientY - r.top}px`;
+    dd.classList.add("on");
+    da.classList.add("dragging");
+    sv.textContent = "0";
+    stt.textContent = "0";
+  });
+
+  window.addEventListener("mousemove", (e: MouseEvent) => {
+    if (!mouseDragging) return;
+    const r = da.getBoundingClientRect();
+    dd.style.left = `${e.clientX - r.left}px`;
+    dd.style.top = `${e.clientY - r.top}px`;
+  });
+
+  window.addEventListener("mouseup", () => {
+    if (!mouseDragging) return;
+    mouseDragging = false;
+    dd.classList.remove("on");
+    da.classList.remove("dragging");
+  });
 
   dragH.bind(da);
 }
