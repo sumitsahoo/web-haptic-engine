@@ -192,6 +192,7 @@ function render(): void {
       <h1>Web Haptic Engine</h1>
       <p>Touch-driven haptic feedback with audio layering for richer, more immersive interactions across ${Object.keys(presets).length} built-in presets.</p>
       <div class="badge"><span class="d ${platformOk ? "ok" : "no"}"></span>${platformLabel}</div>
+      <div style="margin-top:6px"><a class="doc-link" href="./docs/" target="_blank"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M6 2a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7.414A2 2 0 0 0 15.414 6L12 2.586A2 2 0 0 0 10.586 2H6zm5 1.414L14.586 7H12a1 1 0 0 1-1-1V3.414zM5 4a1 1 0 0 1 1-1h4v3a2 2 0 0 0 2 2h3v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4zm2 7a.5.5 0 0 0 0 1h6a.5.5 0 0 0 0-1H7zm0 2a.5.5 0 0 0 0 1h6a.5.5 0 0 0 0-1H7zm0 2a.5.5 0 0 0 0 1h4a.5.5 0 0 0 0-1H7z"/></svg>Documentation</a></div>
     </div>
 
     <div class="sec">

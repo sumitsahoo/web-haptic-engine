@@ -38,6 +38,9 @@
     "build": "vp pack",
     "dev": "vp pack --watch",
     "demo": "vp dev --config demo/vite.config.ts",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "test": "vp test",
     "typecheck": "tsc --noEmit",
     "release": "bumpp",
@@ -45,10 +48,12 @@
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
-    "@typescript/native-preview": "7.0.0-dev.20260405.1",
+    "@typescript/native-preview": "7.0.0-dev.20260406.1",
     "bumpp": "^11.0.1",
+    "oxc-minify": "^0.123.0",
     "typescript": "^6.0.2",
     "vite-plus": "latest",
+    "vitepress": "2.0.0-alpha.17",
     "vitest": "npm:@voidzero-dev/vite-plus-test@latest"
   },
   "packageManager": "pnpm@10.33.0",

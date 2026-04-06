@@ -10,6 +10,7 @@
     <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-yellow.svg" alt="MIT License" /></a>
     <img src="https://img.shields.io/badge/platform-web-blue" alt="Platform" />
     <img src="https://img.shields.io/badge/typescript-strict-blue" alt="TypeScript" />
+    <a href="https://sumitsahoo.github.io/web-haptic-engine/docs/"><img src="https://img.shields.io/badge/docs-VitePress-646cff" alt="Documentation" /></a>
   </p>
 
 </div>
@@ -28,6 +29,19 @@
 | 🔗 **Sequences**           | Chain presets with delays, repeats, and custom gaps                                                     |
 | 〰️ **Easing Functions**    | `linear`, `easeIn`, `easeOut`, `easeInOut`, `bounce`, `spring`                                          |
 | 📦 **Zero Dependencies**   | No external runtime dependencies — pure TypeScript                                                      |
+
+---
+
+## 📚 Documentation
+
+Full documentation with framework integration guides is available at **[sumitsahoo.github.io/web-haptic-engine/docs](https://sumitsahoo.github.io/web-haptic-engine/docs/)**.
+
+- [Getting Started](https://sumitsahoo.github.io/web-haptic-engine/docs/guide/getting-started)
+- [React Guide](https://sumitsahoo.github.io/web-haptic-engine/docs/frameworks/react)
+- [Next.js Guide](https://sumitsahoo.github.io/web-haptic-engine/docs/frameworks/nextjs)
+- [Vue Guide](https://sumitsahoo.github.io/web-haptic-engine/docs/frameworks/vue)
+- [API Reference](https://sumitsahoo.github.io/web-haptic-engine/docs/api/)
+- [Presets](https://sumitsahoo.github.io/web-haptic-engine/docs/guide/presets)
 
 ---
 
@@ -260,13 +274,21 @@ vp test
 
 # Watch mode (rebuild on changes)
 vp pack --watch
+
+# Start docs dev server
+vp run docs:dev
+
+# Build docs for production
+vp run docs:build
 ```
 
 ---
 
 ## 🎮 Demo
 
-An interactive demo is included in the `demo/` directory. It showcases all 23 presets, drag haptics, impulse buffers, sequences, and real-time controls for intensity and audio gain.
+Try the live demo at **[sumitsahoo.github.io/web-haptic-engine](https://sumitsahoo.github.io/web-haptic-engine/)**.
+
+An interactive demo is also included in the `demo/` directory. It showcases all 23 presets, drag haptics, impulse buffers, sequences, and real-time controls for intensity and audio gain.
 
 ```bash
 # Install dependencies (if not already done)
@@ -291,6 +313,11 @@ web-haptic-engine/
 │   ├── interactions/       # User interaction patterns (drag haptics)
 │   ├── haptic-engine.ts    # Main HapticEngine class & convenience helpers
 │   └── index.ts            # Public API exports
+├── docs/                   # VitePress documentation site
+│   ├── .vitepress/         # VitePress config & theme
+│   ├── guide/              # Getting started, presets, platform support
+│   ├── frameworks/         # React, Next.js, Vue integration guides
+│   └── api/                # API reference (HapticEngine, DragHaptics, Types)
 ├── demo/
 │   ├── index.html          # Demo page
 │   ├── main.ts             # Demo app (imports from library)

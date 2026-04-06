@@ -1,4 +1,4 @@
-name: Deploy Demo to GitHub Pages
+name: Deploy Demo & Docs to GitHub Pages
 
 on:
   push:
@@ -29,11 +29,21 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm exec vp build --config demo/vite.config.ts
+      - name: Build demo
+        run: pnpm exec vp build --config demo/vite.config.ts
+
+      - name: Build docs
+        run: pnpm run docs:build
+
+      - name: Combine outputs
+        run: |
+          mkdir -p _site
+          cp -r demo/dist/* _site/
+          cp -r docs/.vitepress/dist _site/docs
 
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: demo/dist
+          path: _site
 
   deploy:
     needs: build
