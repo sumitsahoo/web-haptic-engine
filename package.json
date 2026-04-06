@@ -1,7 +1,7 @@
 {
   "name": "web-haptic-engine",
-  "version": "0.1.0",
-  "description": "A cross-platform haptic feedback engine for the web. Supports Android vibration, iOS Taptic (switch checkbox), audio impulse synthesis, drag haptics, and many built-in presets.",
+  "version": "1.0.0",
+  "description": "Cross-platform (iOS and Android) haptic feedback engine for the web",
   "keywords": [
     "android",
     "audio-impulse",
