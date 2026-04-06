@@ -107,7 +107,7 @@ export class DragHaptics {
       this.active = false;
       // On iOS clean taps, touchend grants activation so Taptic fires.
       // On drag-end touchend, iOS withholds activation — only audio plays.
-      this.engine.trigger("selection", { intensity: this.opts.intensity });
+      void this.engine.trigger("selection", { intensity: this.opts.intensity });
     };
 
     // --- Touch events (iOS / Android) ---

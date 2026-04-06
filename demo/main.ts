@@ -2,7 +2,6 @@ import {
   DragHaptics,
   HapticEngine,
   presets,
-  type HapticPreset,
   type ImpulseType,
   type SequenceStep,
   type Vibration,
@@ -13,6 +12,8 @@ import {
 // ---------------------------------------------------------------------------
 
 const hasVib = typeof navigator !== "undefined" && typeof navigator.vibrate === "function";
+const isAndroid =
+  hasVib && typeof navigator !== "undefined" && /android/i.test(navigator.userAgent);
 const isIOSSwitch = (() => {
   if (typeof document === "undefined" || hasVib) return false;
   if (!("ontouchstart" in window) && !navigator.maxTouchPoints) return false;
@@ -25,12 +26,12 @@ const isIOSSwitch = (() => {
     return false;
   }
 })();
-const platformLabel = hasVib
+const platformLabel = isAndroid
   ? "Android · Vibration + Audio"
   : isIOSSwitch
     ? "iOS · Taptic + Audio"
     : "Desktop · Audio Only";
-const platformOk = hasVib || isIOSSwitch;
+const platformOk = isAndroid || isIOSSwitch;
 
 // ---------------------------------------------------------------------------
 // Engine
@@ -113,7 +114,7 @@ function fire(name: string): void {
     if (logs.length > 10) logs.pop();
     renderLog();
   }
-  engine.trigger(name, { intensity });
+  void engine.trigger(name, { intensity });
 }
 
 function fireImp(type: ImpulseType): void {
@@ -276,7 +277,7 @@ function render(): void {
   document.querySelectorAll(".sq-btn").forEach((b) =>
     b.addEventListener("click", () => {
       const s = sequences[parseInt((b as HTMLElement).dataset.si!, 10)];
-      engine.sequence(s.steps, s.opts);
+      void engine.sequence(s.steps, s.opts);
     }),
   );
 

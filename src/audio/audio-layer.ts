@@ -28,7 +28,7 @@ export class AudioImpulseLayer {
       s.buffer = b;
       s.connect(ctx.destination);
       s.start(0);
-      if (ctx.state === "suspended") ctx.resume();
+      if (ctx.state === "suspended") void ctx.resume();
       this.unlocked = true;
     } catch {}
   }
@@ -38,7 +38,7 @@ export class AudioImpulseLayer {
       this.ctx = new AudioContext();
       this.lib = new ImpulseLibrary(this.ctx);
     }
-    if (this.ctx.state === "suspended") this.ctx.resume();
+    if (this.ctx.state === "suspended") void this.ctx.resume();
     return this.ctx;
   }
 
@@ -79,7 +79,7 @@ export class AudioImpulseLayer {
     this.mg = Math.max(0, Math.min(1, g));
   }
   destroy(): void {
-    this.ctx?.close();
+    void this.ctx?.close();
     this.ctx = null;
     this.lib = null;
   }
