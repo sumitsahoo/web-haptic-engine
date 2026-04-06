@@ -1,19 +1,16 @@
-export {
-  DragHaptics,
-  easings,
-  getDefaultEngine,
-  haptic,
-  HapticEngine,
-  presets,
-  type DragHapticsOptions,
-  type EasingFn,
-  type HapticEngineOptions,
-  type HapticInput,
-  type HapticPattern,
-  type HapticPreset,
-  type ImpulseType,
-  type SequenceOptions,
-  type SequenceStep,
-  type TriggerOptions,
-  type Vibration,
-} from './haptic-engine'
+export { easings, presets } from "./core";
+export type {
+  DragHapticsOptions,
+  EasingFn,
+  HapticEngineOptions,
+  HapticInput,
+  HapticPattern,
+  HapticPreset,
+  ImpulseType,
+  SequenceOptions,
+  SequenceStep,
+  TriggerOptions,
+  Vibration,
+} from "./core";
+export { getDefaultEngine, haptic, HapticEngine } from "./haptic-engine";
+export { DragHaptics } from "./interactions";

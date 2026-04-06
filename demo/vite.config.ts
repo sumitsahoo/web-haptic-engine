@@ -1,14 +1,14 @@
-import { defineConfig } from 'vite-plus'
+import { defineConfig } from "vite-plus";
 
 export default defineConfig({
   root: __dirname,
-  base: '/web-haptic-engine/',
+  base: "/web-haptic-engine/",
   server: {
     allowedHosts: true,
   },
   resolve: {
     alias: {
-      'web-haptic-engine': new URL('../src/index.ts', import.meta.url).pathname,
+      "web-haptic-engine": new URL("../src/index.ts", import.meta.url).pathname,
     },
   },
-})
+});

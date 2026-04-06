@@ -1,39 +1,39 @@
 {
   "name": "web-haptic-engine",
-  "type": "module",
   "version": "0.1.0",
   "description": "A cross-platform haptic feedback engine for the web. Supports Android vibration, iOS Taptic (switch checkbox), audio impulse synthesis, drag haptics, and 22 built-in presets.",
-  "author": "Sumit Sahoo",
-  "license": "MIT",
+  "keywords": [
+    "android",
+    "audio-impulse",
+    "drag-haptics",
+    "haptic-feedback",
+    "haptics",
+    "ios",
+    "taptic",
+    "touch-feedback",
+    "vibration",
+    "web-audio"
+  ],
   "homepage": "https://github.com/sumitsahoo/web-haptic-engine#readme",
+  "bugs": {
+    "url": "https://github.com/sumitsahoo/web-haptic-engine/issues"
+  },
+  "license": "MIT",
+  "author": "Sumit Sahoo",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sumitsahoo/web-haptic-engine.git"
   },
-  "bugs": {
-    "url": "https://github.com/sumitsahoo/web-haptic-engine/issues"
-  },
-  "keywords": [
-    "haptics",
-    "vibration",
-    "haptic-feedback",
-    "taptic",
-    "ios",
-    "android",
-    "web-audio",
-    "audio-impulse",
-    "drag-haptics",
-    "touch-feedback"
+  "files": [
+    "dist"
   ],
+  "type": "module",
   "sideEffects": false,
+  "types": "./dist/index.d.mts",
   "exports": {
     ".": "./dist/index.mjs",
     "./package.json": "./package.json"
   },
-  "types": "./dist/index.d.mts",
-  "files": [
-    "dist"
-  ],
   "scripts": {
     "build": "vp pack",
     "dev": "vp pack --watch",
@@ -48,14 +48,14 @@
     "@typescript/native-preview": "7.0.0-dev.20260328.1",
     "bumpp": "^11.0.1",
     "typescript": "^6.0.2",
-    "vitest": "npm:@voidzero-dev/vite-plus-test@latest",
-    "vite-plus": "latest"
+    "vite-plus": "latest",
+    "vitest": "npm:@voidzero-dev/vite-plus-test@latest"
   },
+  "packageManager": "pnpm@10.33.0",
   "pnpm": {
     "overrides": {
       "vite": "npm:@voidzero-dev/vite-plus-core@latest",
       "vitest": "npm:@voidzero-dev/vite-plus-test@latest"
     }
-  },
-  "packageManager": "pnpm@10.33.0"
+  }
 }

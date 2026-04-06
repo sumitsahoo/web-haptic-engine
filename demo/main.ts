@@ -209,7 +209,7 @@ function render(): void {
     </div>
 
     <div class="sec">
-      <div class="st">Drag Haptics <span class="tag tag-b">TOUCHMOVE-DRIVEN</span></div>${isIOSSwitch ? '\n      <div class="ios-hint">Taptic fires on each detent. All other feedback is audio-only on iOS.</div>' : ''}
+      <div class="st">Drag Haptics <span class="tag tag-b">TOUCHMOVE-DRIVEN</span></div>${isIOSSwitch ? '\n      <div class="ios-hint">Taptic fires on each detent. All other feedback is audio-only on iOS.</div>' : ""}
       <div class="ctrl" style="padding:8px 13px">
         <div class="da" id="da">
           <div class="da-dot" id="dd"></div>
