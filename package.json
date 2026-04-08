@@ -1,6 +1,6 @@
 {
   "name": "web-haptic-engine",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Cross-platform (iOS and Android) haptic feedback engine for the web",
   "keywords": [
     "android",
