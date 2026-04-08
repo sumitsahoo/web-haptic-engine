@@ -16,11 +16,11 @@ const engine = new HapticEngine(options?: HapticEngineOptions);
 
 ### Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `throttleMs` | `number` | `25` | Minimum milliseconds between `trigger()` calls |
-| `audioLayer` | `boolean` | `true` | Enable the audio impulse layer |
-| `audioGain` | `number` | `0.6` | Master audio gain (`0` – `1`) |
+| Option       | Type      | Default | Description                                    |
+| ------------ | --------- | ------- | ---------------------------------------------- |
+| `throttleMs` | `number`  | `25`    | Minimum milliseconds between `trigger()` calls |
+| `audioLayer` | `boolean` | `true`  | Enable the audio impulse layer                 |
+| `audioGain`  | `number`  | `0.6`   | Master audio gain (`0` – `1`)                  |
 
 ## Static Properties
 
@@ -94,11 +94,11 @@ fireImpulse(type: ImpulseType, intensity: number, force?: boolean): void
 
 Play a single audio impulse directly.
 
-| Name | Type | Description |
-|------|------|-------------|
-| `type` | `ImpulseType` | One of 8 impulse types |
-| `intensity` | `number` | Volume `0` – `1` |
-| `force` | `boolean` | Bypass throttle check |
+| Name        | Type          | Description            |
+| ----------- | ------------- | ---------------------- |
+| `type`      | `ImpulseType` | One of 8 impulse types |
+| `intensity` | `number`      | Volume `0` – `1`       |
+| `force`     | `boolean`     | Bypass throttle check  |
 
 ```ts
 engine.fireImpulse("tick", 0.8);
@@ -142,13 +142,10 @@ Play a multi-step sequence of presets.
 | `repeatGap` | `number` | `0` | Gap between repetitions (ms) |
 
 ```ts
-await engine.sequence(
-  [
-    { preset: "rampUp" },
-    { preset: "confirm", delay: 200 },
-  ],
-  { repeat: 2, repeatGap: 300 }
-);
+await engine.sequence([{ preset: "rampUp" }, { preset: "confirm", delay: 200 }], {
+  repeat: 2,
+  repeatGap: 300,
+});
 ```
 
 ### `drag()`
@@ -165,7 +162,7 @@ Create a [`DragHaptics`](/api/drag-haptics) instance bound to this engine.
 cancel(): void
 ```
 
-Cancel any active haptic sequences.
+Cancel any active haptic sequences. Audio sources are stopped with a short gain ramp-down (~5 ms) to prevent click/pop artifacts. Both single-fire impulses (from `fire()` / iOS drag ticks) and pre-scheduled sequences are cancelled.
 
 ### `setEnabled()`
 

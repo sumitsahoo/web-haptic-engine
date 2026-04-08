@@ -64,18 +64,18 @@ const engine = new HapticEngine({ audioLayer: true });
 
 ## Audio Impulse Types
 
-All platforms support the audio layer. These 8 impulse types are synthesized at runtime using Web Audio:
+All platforms support the audio layer. These 8 impulse types are synthesized at runtime using Web Audio. The audio layer tracks all active sources (both single-fire and sequenced) for proper cancellation with a short gain ramp-down to prevent click/pop artifacts:
 
-| Impulse | Frequency | Character |
-|---------|-----------|-----------|
-| `tick` | 320 Hz | Bright, crisp click |
-| `tap` | 220 Hz | Warm, soft tap |
-| `thud` | 160 Hz | Deep, heavy impact |
-| `click` | 400 Hz | Sharp, ultra-short |
-| `snap` | 500 Hz | Crisp, snappy |
-| `buzz` | 200 Hz | Sustained vibration |
-| `confirm` | 280 Hz | Dual-tone affirming |
-| `harsh` | 180 Hz | Gritty, multi-harmonic |
+| Impulse   | Frequency | Character              |
+| --------- | --------- | ---------------------- |
+| `tick`    | 320 Hz    | Bright, crisp click    |
+| `tap`     | 220 Hz    | Warm, soft tap         |
+| `thud`    | 160 Hz    | Deep, heavy impact     |
+| `click`   | 400 Hz    | Sharp, ultra-short     |
+| `snap`    | 500 Hz    | Crisp, snappy          |
+| `buzz`    | 200 Hz    | Sustained vibration    |
+| `confirm` | 280 Hz    | Dual-tone affirming    |
+| `harsh`   | 180 Hz    | Gritty, multi-harmonic |
 
 ## Feature Detection
 
@@ -83,9 +83,9 @@ All platforms support the audio layer. These 8 impulse types are synthesized at 
 import { HapticEngine } from "web-haptic-engine";
 
 // Static checks (no instantiation needed)
-HapticEngine.supportsVibration;   // Android vibration API
-HapticEngine.supportsIOSHaptics;  // iOS Taptic Engine
-HapticEngine.isSupported;         // Any native haptic method
+HapticEngine.supportsVibration; // Android vibration API
+HapticEngine.supportsIOSHaptics; // iOS Taptic Engine
+HapticEngine.isSupported; // Any native haptic method
 
 // The engine gracefully degrades — audio always works
 const engine = new HapticEngine();
@@ -94,11 +94,11 @@ await engine.trigger("success"); // Works on all platforms
 
 ## Browser Compatibility
 
-| Feature | Chrome | Safari | Firefox | Edge |
-|---------|--------|--------|---------|------|
-| Vibration API | 32+ | No | 16+ | 79+ |
-| iOS Taptic | No | 17.5+ | No | No |
-| Web Audio | 35+ | 14.1+ | 25+ | 79+ |
+| Feature       | Chrome | Safari | Firefox | Edge |
+| ------------- | ------ | ------ | ------- | ---- |
+| Vibration API | 32+    | No     | 16+     | 79+  |
+| iOS Taptic    | No     | 17.5+  | No      | No   |
+| Web Audio     | 35+    | 14.1+  | 25+     | 79+  |
 
 ::: tip
 The library always works — on platforms without native haptics, the audio layer provides feedback. No conditional code needed in your app.

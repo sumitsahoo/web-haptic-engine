@@ -34,7 +34,7 @@ importers:
         specifier: 2.0.0-alpha.17
         version: 2.0.0-alpha.17(@types/node@25.5.2)(jiti@2.6.1)(oxc-minify@0.124.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2))(postcss@8.5.9)(typescript@6.0.2)(yaml@2.8.3)
       vitest:
-        specifier: npm:@voidzero-dev/vite-plus-test@^0.1.16
+        specifier: npm:@voidzero-dev/vite-plus-test@latest
         version: '@voidzero-dev/vite-plus-test@0.1.16(@types/node@25.5.2)(jiti@2.6.1)(typescript@6.0.2)(vite@8.0.3(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@types/node@25.5.2)(jiti@2.6.1)(yaml@2.8.3))(yaml@2.8.3)'
 
 packages:

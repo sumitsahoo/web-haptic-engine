@@ -16,12 +16,12 @@ const drag = new DragHaptics(engine: HapticEngine, options?: DragHapticsOptions)
 
 ### Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `fireDist` | `number` | `18` | Minimum pixels moved to trigger each haptic tick |
-| `impulse` | `ImpulseType` | `"tick"` | Audio impulse type for drag ticks |
-| `intensity` | `number` | `0.6` | Haptic/audio intensity (`0` – `1`) |
-| `onTick` | `(velocity: number, ticks: number) => void` | — | Callback fired on each haptic tick |
+| Option      | Type                                        | Default  | Description                                      |
+| ----------- | ------------------------------------------- | -------- | ------------------------------------------------ |
+| `fireDist`  | `number`                                    | `18`     | Minimum pixels moved to trigger each haptic tick |
+| `impulse`   | `ImpulseType`                               | `"tick"` | Audio impulse type for drag ticks                |
+| `intensity` | `number`                                    | `0.6`    | Haptic/audio intensity (`0` – `1`)               |
+| `onTick`    | `(velocity: number, ticks: number) => void` | —        | Callback fired on each haptic tick               |
 
 ## Methods
 
@@ -99,6 +99,8 @@ You can also create DragHaptics via the engine directly:
 const drag = engine.drag({
   fireDist: 18,
   impulse: "tick",
-  onTick: (vel, ticks) => { /* ... */ },
+  onTick: (vel, ticks) => {
+    /* ... */
+  },
 });
 ```

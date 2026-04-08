@@ -166,11 +166,7 @@ const sequences: SequenceDemo[] = [
   {
     name: "Buzz Burst",
     desc: "buzz → snap → buzz",
-    steps: [
-      { preset: "buzz" },
-      { preset: "snap", delay: 200 },
-      { preset: "buzz", delay: 200 },
-    ],
+    steps: [{ preset: "buzz" }, { preset: "snap", delay: 200 }, { preset: "buzz", delay: 200 }],
   },
   {
     name: "Tension Build",

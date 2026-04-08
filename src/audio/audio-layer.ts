@@ -13,8 +13,8 @@ export class AudioImpulseLayer {
   private lib: ImpulseLibrary | null = null;
   private mg: number;
   private unlocked = false;
-  /** Active AudioBufferSourceNodes from the current sequence, for cancellation. */
-  private activeSources: AudioBufferSourceNode[] = [];
+  /** Active sources with their gain nodes, for cancellation and cleanup. */
+  private activeSources: { src: AudioBufferSourceNode; gain: GainNode }[] = [];
 
   constructor(gain: number = 0.6) {
     this.mg = gain;
@@ -58,6 +58,17 @@ export class AudioImpulseLayer {
       src.connect(gain);
       gain.connect(ctx.destination);
       src.start(0);
+
+      const entry = { src, gain };
+      this.activeSources.push(entry);
+      src.onended = () => {
+        const idx = this.activeSources.indexOf(entry);
+        if (idx !== -1) this.activeSources.splice(idx, 1);
+        try {
+          src.disconnect();
+          gain.disconnect();
+        } catch {}
+      };
     } catch {}
   }
 
@@ -112,27 +123,40 @@ export class AudioImpulseLayer {
         src.start(startAt);
         src.stop(stopAt);
 
+        const entry = { src, gain };
         src.onended = () => {
-          const idx = this.activeSources.indexOf(src);
+          const idx = this.activeSources.indexOf(entry);
           if (idx !== -1) this.activeSources.splice(idx, 1);
           try {
             src.disconnect();
             gain.disconnect();
           } catch {}
         };
-        this.activeSources.push(src);
+        this.activeSources.push(entry);
 
         elapsedSec = segStartSec + segDurSec;
       }
     } catch {}
   }
 
-  /** Stop all active sources from the current sequence. */
+  /** Stop all active sources with a short gain ramp to avoid audio pops. */
   stopSequence(): void {
-    for (const src of this.activeSources) {
+    const ct = this.ctx?.currentTime ?? 0;
+    for (const { src, gain } of this.activeSources) {
       try {
-        src.stop();
+        // Ramp gain to zero over 5ms to prevent click/pop artifacts
+        gain.gain.cancelScheduledValues(ct);
+        gain.gain.setValueAtTime(gain.gain.value, ct);
+        gain.gain.linearRampToValueAtTime(0, ct + 0.005);
+        src.stop(ct + 0.006);
+      } catch {
+        try {
+          src.stop();
+        } catch {}
+      }
+      try {
         src.disconnect();
+        gain.disconnect();
       } catch {}
     }
     this.activeSources = [];

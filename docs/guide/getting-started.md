@@ -64,13 +64,10 @@ engine.destroy();
 Chain multiple presets together:
 
 ```ts
-await engine.sequence(
-  [
-    { preset: "rampUp" },
-    { preset: "confirm", delay: 200 },
-  ],
-  { repeat: 2, repeatGap: 300 }
-);
+await engine.sequence([{ preset: "rampUp" }, { preset: "confirm", delay: 200 }], {
+  repeat: 2,
+  repeatGap: 300,
+});
 ```
 
 ## Custom Presets

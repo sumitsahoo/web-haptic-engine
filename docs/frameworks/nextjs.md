@@ -32,11 +32,7 @@ Haptic code must run in client components. Add the `"use client"` directive:
 import { haptic } from "web-haptic-engine";
 
 export function LikeButton() {
-  return (
-    <button onClick={() => haptic("success")}>
-      Like
-    </button>
-  );
+  return <button onClick={() => haptic("success")}>Like</button>;
 }
 ```
 
@@ -105,11 +101,7 @@ import { useHaptic } from "./use-haptic";
 export function LikeButton() {
   const { trigger } = useHaptic();
 
-  return (
-    <button onClick={() => trigger("success", { intensity: 0.8 })}>
-      Like
-    </button>
-  );
+  return <button onClick={() => trigger("success", { intensity: 0.8 })}>Like</button>;
 }
 ```
 
@@ -136,11 +128,7 @@ export default function Page() {
 import { haptic } from "web-haptic-engine";
 
 export default function HapticButton() {
-  return (
-    <button onClick={() => haptic("success")}>
-      Like
-    </button>
-  );
+  return <button onClick={() => haptic("success")}>Like</button>;
 }
 ```
 
@@ -219,6 +207,7 @@ export function DragArea() {
 ## Middleware & API Routes
 
 Web Haptic Engine is a client-side library. Do not import it in:
+
 - `middleware.ts`
 - API routes (`app/api/` or `pages/api/`)
 - Server Components (without `"use client"`)
