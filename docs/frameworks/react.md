@@ -28,11 +28,7 @@ The simplest approach — use the `haptic()` convenience function in event handl
 import { haptic } from "web-haptic-engine";
 
 function LikeButton() {
-  return (
-    <button onClick={() => haptic("success")}>
-      Like
-    </button>
-  );
+  return <button onClick={() => haptic("success")}>Like</button>;
 }
 ```
 
@@ -142,10 +138,7 @@ function Slider() {
   });
 
   return (
-    <div
-      ref={dragRef}
-      style={{ width: 300, height: 200, background: "#f0f4fa", borderRadius: 12 }}
-    >
+    <div ref={dragRef} style={{ width: 300, height: 200, background: "#f0f4fa", borderRadius: 12 }}>
       Drag here
     </div>
   );
@@ -186,7 +179,7 @@ function HapticButton({
 // Usage
 <HapticButton preset="success" intensity={0.8}>
   Submit
-</HapticButton>
+</HapticButton>;
 ```
 
 ## Sequences in React
@@ -198,13 +191,7 @@ import { HapticEngine } from "web-haptic-engine";
 function NotificationDemo() {
   const playSequence = useCallback(async () => {
     const engine = new HapticEngine();
-    await engine.sequence(
-      [
-        { preset: "rampUp" },
-        { preset: "confirm", delay: 200 },
-      ],
-      { repeat: 1 }
-    );
+    await engine.sequence([{ preset: "rampUp" }, { preset: "confirm", delay: 200 }], { repeat: 1 });
     engine.destroy();
   }, []);
 

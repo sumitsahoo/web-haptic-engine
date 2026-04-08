@@ -1,5 +1,7 @@
 /** Maximum duration for a single vibration segment (ms). */
 export const MAX_SEG_MS = 1000;
+/** Duration of a single PWM cycle for intensity modulation (ms). */
+export const PWM_CYCLE = 20;
 /** Default intensity when none is specified. */
 export const DEF_INTENSITY = 0.5;
 /** Default throttle between trigger() calls (ms). */

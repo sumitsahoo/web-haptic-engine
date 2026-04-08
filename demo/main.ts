@@ -164,10 +164,9 @@ const sequences: SequenceDemo[] = [
     ],
   },
   {
-    name: "Heartbeat ×2",
-    desc: "double heartbeat",
-    steps: [{ preset: "heartbeat" }],
-    opts: { repeat: 2, repeatGap: 400 },
+    name: "Buzz Burst",
+    desc: "buzz → snap → buzz",
+    steps: [{ preset: "buzz" }, { preset: "snap", delay: 200 }, { preset: "buzz", delay: 200 }],
   },
   {
     name: "Tension Build",

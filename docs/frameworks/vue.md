@@ -96,16 +96,9 @@ For drag interactions:
 ```ts
 // composables/useDragHaptics.ts
 import { onMounted, onUnmounted, ref, type Ref } from "vue";
-import {
-  HapticEngine,
-  DragHaptics,
-  type DragHapticsOptions,
-} from "web-haptic-engine";
+import { HapticEngine, DragHaptics, type DragHapticsOptions } from "web-haptic-engine";
 
-export function useDragHaptics(
-  target: Ref<HTMLElement | null>,
-  options?: DragHapticsOptions,
-) {
+export function useDragHaptics(target: Ref<HTMLElement | null>, options?: DragHapticsOptions) {
   let engine: HapticEngine | null = null;
   let drag: DragHaptics | null = null;
   let unbind: (() => void) | null = null;
@@ -175,13 +168,16 @@ A reusable component with built-in haptic feedback:
 <script setup lang="ts">
 import { haptic, type HapticInput } from "web-haptic-engine";
 
-const props = withDefaults(defineProps<{
-  preset?: HapticInput;
-  intensity?: number;
-}>(), {
-  preset: "light",
-  intensity: 0.6,
-});
+const props = withDefaults(
+  defineProps<{
+    preset?: HapticInput;
+    intensity?: number;
+  }>(),
+  {
+    preset: "light",
+    intensity: 0.6,
+  },
+);
 
 const emit = defineEmits<{
   click: [event: MouseEvent];
@@ -216,13 +212,7 @@ import { HapticEngine } from "web-haptic-engine";
 
 async function playSequence() {
   const engine = new HapticEngine();
-  await engine.sequence(
-    [
-      { preset: "rampUp" },
-      { preset: "confirm", delay: 200 },
-    ],
-    { repeat: 1 },
-  );
+  await engine.sequence([{ preset: "rampUp" }, { preset: "confirm", delay: 200 }], { repeat: 1 });
   engine.destroy();
 }
 </script>

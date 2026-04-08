@@ -6,8 +6,10 @@
 // feel of physical haptic feedback through speakers/headphones.
 // ---------------------------------------------------------------------------
 
+import type { ImpulseType } from "../core";
+
 export class ImpulseLibrary {
-  private buffers: Map<string, AudioBuffer> = new Map();
+  private buffers: Map<ImpulseType, AudioBuffer> = new Map();
   constructor(private ctx: AudioContext) {
     this.build();
   }
@@ -62,8 +64,8 @@ export class ImpulseLibrary {
     });
   }
 
-  /** Synthesize a named impulse buffer: peak-normalize samples from fn(t). */
-  private mk(name: string, sr: number, dur: number, fn: (t: number) => number): void {
+  /** Synthesize a named impulse buffer: peak-normalize samples and fade out the tail for clean looping. */
+  private mk(name: ImpulseType, sr: number, dur: number, fn: (t: number) => number): void {
     const len = Math.ceil(sr * dur),
       buf = this.ctx.createBuffer(1, len, sr),
       d = buf.getChannelData(0);
@@ -73,10 +75,14 @@ export class ImpulseLibrary {
       pk = Math.max(pk, Math.abs(d[i]));
     }
     if (pk > 0) for (let i = 0; i < len; i++) d[i] /= pk;
+    // Fade out the last 16 samples (~0.3ms at 48kHz) to ensure the buffer
+    // ends at zero, preventing click artifacts when looping.
+    const fade = Math.min(16, len);
+    for (let i = 0; i < fade; i++) d[len - 1 - i] *= i / fade;
     this.buffers.set(name, buf);
   }
 
-  get(name: string): AudioBuffer | undefined {
+  get(name: ImpulseType): AudioBuffer | undefined {
     return this.buffers.get(name);
   }
 }

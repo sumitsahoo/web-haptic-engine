@@ -19,7 +19,7 @@
 // ============================================================================
 
 import { AudioImpulseLayer } from "./audio";
-import { DEF_INTENSITY, DEF_THROTTLE, easings, IOS_GAP, presets } from "./core";
+import { DEF_INTENSITY, DEF_THROTTLE, easings, presets } from "./core";
 import type {
   DragHapticsOptions,
   EasingFn,
@@ -38,7 +38,7 @@ import {
   detectPlatform,
   hasVib,
   IOSSwitchPool,
-  iosPlan,
+  iosRafDrive,
   supportsIOSHaptics,
   type Platform,
 } from "./platform";
@@ -52,6 +52,7 @@ export class HapticEngine {
   private enabled = true;
   private lastTriggerTime = 0;
   private activeAbort: AbortController | null = null;
+  private iosCancel: (() => void) | null = null;
 
   /** True if the device supports Android-style navigator.vibrate(). */
   static readonly supportsVibration: boolean = hasVib();
@@ -94,14 +95,21 @@ export class HapticEngine {
     const ef = r.preset?.easing ? easings[r.preset.easing] : undefined;
     const sa = options?.audio ?? this.useAudio;
     this.audio?.unlock();
-    if (sa && this.audio && r.preset?.impulse)
-      this.audio.fireSequence(r.vibrations, r.preset.impulse, di, ef);
     switch (this.platform) {
       case "vibration":
+        if (sa && this.audio && r.preset?.impulse)
+          this.audio.fireSequence(r.vibrations, r.preset.impulse, di, ef);
         await this.fireAndroid(r.vibrations, di, ef);
         break;
       case "ios-switch":
-        await this.fireIOS(r.vibrations, r.preset, di);
+        // On iOS, audio is driven by the rAF loop (not pre-scheduled) so
+        // haptics and audio share the exact same timing source.
+        await this.fireIOS(r.vibrations, r.preset, di, sa);
+        break;
+      default:
+        // Desktop/fallback: audio only
+        if (sa && this.audio && r.preset?.impulse)
+          this.audio.fireSequence(r.vibrations, r.preset.impulse, di, ef);
         break;
     }
   }
@@ -193,6 +201,9 @@ export class HapticEngine {
   cancel(): void {
     this.activeAbort?.abort();
     this.activeAbort = null;
+    this.iosCancel?.();
+    this.iosCancel = null;
+    this.audio?.stopSequence();
     if (this.platform === "vibration" && hasVib()) navigator.vibrate(0);
   }
 
@@ -273,24 +284,23 @@ export class HapticEngine {
     }
   }
 
-  /** iOS: fire switch-checkbox toggles with gaps between them. */
-  private async fireIOS(vibs: Vibration[], pr: HapticPreset | null, di: number): Promise<void> {
+  /** iOS: fire switch-checkbox toggles via rAF loop with intensity-based intervals. */
+  private async fireIOS(
+    vibs: Vibration[],
+    pr: HapticPreset | null,
+    di: number,
+    playAudio?: boolean,
+  ): Promise<void> {
     if (!this.iosPool) return;
-    const plan = iosPlan(vibs, pr, di);
-    if (plan.ticks <= 0) return;
-    const ac = new AbortController();
-    this.activeAbort = ac;
-    for (let i = 0; i < plan.ticks; i++) {
-      if (ac.signal.aborted) return;
-      this.iosPool.fire();
-      if (i < plan.ticks - 1) {
-        const gap = plan.gaps[i] ?? IOS_GAP;
-        if (gap > 0) {
-          await this.sleep(gap, ac.signal);
-          if (ac.signal.aborted) return;
-        }
-      }
-    }
+    this.iosCancel?.();
+    const impulseType = pr?.impulse;
+    const audio = playAudio && this.audio && impulseType ? this.audio : null;
+    const { promise, cancel } = iosRafDrive(this.iosPool, vibs, di, (tickIntensity) => {
+      if (audio && impulseType) audio.fire(impulseType, tickIntensity);
+    });
+    this.iosCancel = cancel;
+    await promise;
+    this.iosCancel = null;
   }
 
   /** Cancellable setTimeout wrapped in a Promise. */
