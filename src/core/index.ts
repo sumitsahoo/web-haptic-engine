@@ -7,6 +7,7 @@ export {
   IOS_GAP,
   IOS_MIN,
   MAX_SEG_MS,
+  PWM_CYCLE,
 } from "./constants";
 export type {
   DragHapticsOptions,

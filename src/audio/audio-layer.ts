@@ -13,6 +13,8 @@ export class AudioImpulseLayer {
   private lib: ImpulseLibrary | null = null;
   private mg: number;
   private unlocked = false;
+  /** Active AudioBufferSourceNodes from the current sequence, for cancellation. */
+  private activeSources: AudioBufferSourceNode[] = [];
 
   constructor(gain: number = 0.6) {
     this.mg = gain;
@@ -59,26 +61,88 @@ export class AudioImpulseLayer {
     } catch {}
   }
 
-  /** Play a sequence of impulses matching a Vibration[] pattern. */
+  /**
+   * Play a sequence of impulses matching a Vibration[] pattern.
+   *
+   * Short segments (≤ 1.5× impulse length) fire a single impulse.
+   * Long segments use a single looping AudioBufferSourceNode with precise
+   * start/stop times — one node per segment instead of dozens, reliable
+   * on iOS Safari.
+   */
   fireSequence(vibs: Vibration[], type: ImpulseType, intensity: number, ef?: EasingFn): void {
-    let elapsed = 0;
-    const count = vibs.length;
-    for (let i = 0; i < count; i++) {
-      const v = vibs[i];
-      const delay = elapsed + (v.delay ?? 0);
-      const si = v.intensity ?? intensity;
-      const pr = count > 1 ? i / (count - 1) : 1;
-      const ei = ef ? si * Math.max(0.1, ef(pr)) : si;
-      if (delay <= 0) this.fire(type, ei);
-      else setTimeout(() => this.fire(type, ei), delay);
-      elapsed = delay + v.duration;
+    try {
+      const ctx = this.ensureCtx();
+      if (!this.lib) return;
+      const buf = this.lib.get(type);
+      if (!buf) return;
+
+      // Cancel any previously scheduled sequence
+      this.stopSequence();
+
+      const now = ctx.currentTime;
+      const impulseSec = buf.length / buf.sampleRate;
+
+      let elapsedSec = 0;
+      const count = vibs.length;
+
+      for (let i = 0; i < count; i++) {
+        const v = vibs[i];
+        const segStartSec = elapsedSec + (v.delay ?? 0) / 1000;
+        const segDurSec = v.duration / 1000;
+        const si = v.intensity ?? intensity;
+        const pr = count > 1 ? i / (count - 1) : 1;
+        const ei = ef ? si * Math.max(0.1, ef(pr)) : si;
+
+        const src = ctx.createBufferSource();
+        const gain = ctx.createGain();
+        src.buffer = buf;
+        gain.gain.value = ei * this.mg;
+        src.connect(gain);
+        gain.connect(ctx.destination);
+
+        const startAt = now + segStartSec;
+        const stopAt = now + segStartSec + segDurSec;
+
+        if (segDurSec > impulseSec * 1.5) {
+          // Long segment: loop the impulse buffer for the full duration
+          src.loop = true;
+          src.loopEnd = impulseSec;
+        }
+
+        src.start(startAt);
+        src.stop(stopAt);
+
+        src.onended = () => {
+          const idx = this.activeSources.indexOf(src);
+          if (idx !== -1) this.activeSources.splice(idx, 1);
+          try {
+            src.disconnect();
+            gain.disconnect();
+          } catch {}
+        };
+        this.activeSources.push(src);
+
+        elapsedSec = segStartSec + segDurSec;
+      }
+    } catch {}
+  }
+
+  /** Stop all active sources from the current sequence. */
+  stopSequence(): void {
+    for (const src of this.activeSources) {
+      try {
+        src.stop();
+        src.disconnect();
+      } catch {}
     }
+    this.activeSources = [];
   }
 
   setGain(g: number): void {
     this.mg = Math.max(0, Math.min(1, g));
   }
   destroy(): void {
+    this.stopSequence();
     void this.ctx?.close();
     this.ctx = null;
     this.lib = null;

@@ -7,8 +7,12 @@
 // (kept in the render tree; display:none may cause iOS to skip the haptic).
 // ---------------------------------------------------------------------------
 
-import { IOS_GAP, IOS_MIN } from "../core";
-import type { HapticPreset, Vibration } from "../core";
+import type { Vibration } from "../core";
+
+/** Minimum toggle interval at intensity 1 (ms) — roughly every frame. */
+const TOGGLE_MIN = 16;
+/** Toggle interval range above min (ms). At intensity 0.5: ~108ms gap. */
+const TOGGLE_RANGE = 184;
 
 export class IOSSwitchPool {
   private labels: HTMLLabelElement[] = [];
@@ -60,38 +64,133 @@ export class IOSSwitchPool {
 }
 
 // ---------------------------------------------------------------------------
-// iOS Tick Planner
+// iOS rAF-based haptic driver
 //
-// Determines how many switch toggles and at what intervals to fire for a
-// given preset on iOS. If the preset defines iosTicks/iosTickGap those are
-// used directly; otherwise ticks are inferred from the Vibration[] pattern.
+// Uses requestAnimationFrame to fire switch toggles at intensity-dependent
+// intervals. This avoids setTimeout drift over long patterns and produces
+// tighter, more continuous haptic feedback. Phase boundaries from the
+// Vibration[] pattern are respected — toggles only fire during "on" phases.
 // ---------------------------------------------------------------------------
 
-export function iosPlan(
+interface Phase {
+  end: number;
+  isOn: boolean;
+  intensity: number;
+}
+
+/** Build phase boundaries from a Vibration[] pattern with a default intensity. */
+export function buildPhases(vibs: Vibration[], di: number): { phases: Phase[]; total: number } {
+  const phases: Phase[] = [];
+  let cumulative = 0;
+  for (const vib of vibs) {
+    const intensity = Math.max(0, Math.min(1, vib.intensity ?? di));
+    const delay = vib.delay ?? 0;
+    if (delay > 0) {
+      cumulative += delay;
+      phases.push({ end: cumulative, isOn: false, intensity: 0 });
+    }
+    cumulative += vib.duration;
+    phases.push({ end: cumulative, isOn: true, intensity });
+  }
+  return { phases, total: cumulative };
+}
+
+/** Calculate the toggle interval for a given intensity. */
+function toggleInterval(intensity: number): number {
+  return TOGGLE_MIN + (1 - intensity) * TOGGLE_RANGE;
+}
+
+/**
+ * Drive iOS haptics via a rAF loop. Fires the first toggle synchronously
+ * (required for user-gesture context on iOS Safari), then continues via
+ * requestAnimationFrame with intensity-dependent toggle intervals.
+ *
+ * Returns an object with a cancel() method to abort early.
+ */
+export function iosRafDrive(
+  pool: IOSSwitchPool,
   vibs: Vibration[],
-  pr: HapticPreset | null,
   di: number,
-): { ticks: number; gaps: number[] } {
-  if (pr?.iosTicks !== undefined) {
-    const bt = pr.iosTicks,
-      sc = Math.max(1, Math.round(bt * Math.max(0.25, di)));
-    const gap = pr.iosTickGap ?? IOS_GAP;
-    if (gap === 0 && vibs.length > 1) {
-      const gs: number[] = [];
-      for (let i = 1; i < vibs.length && gs.length < sc - 1; i++)
-        gs.push((vibs[i].delay ?? 0) + vibs[i - 1].duration);
-      return { ticks: Math.min(sc, gs.length + 1), gaps: gs };
-    }
-    return { ticks: sc, gaps: Array(Math.max(0, sc - 1)).fill(gap) };
+  onTick?: (intensity: number) => void,
+): { promise: Promise<void>; cancel: () => void } {
+  const { phases, total } = buildPhases(vibs, di);
+  if (phases.length === 0 || total <= 0) {
+    return { promise: Promise.resolve(), cancel: () => {} };
   }
-  let t = 0;
-  const gs: number[] = [];
-  for (const v of vibs) {
-    if ((v.intensity ?? di) >= IOS_MIN) {
-      if (t > 0) gs.push((v.delay ?? 0) + (vibs[t - 1]?.duration ?? 0));
-      t++;
+
+  let cancelled = false;
+  let rafId: number | null = null;
+
+  const cancel = () => {
+    cancelled = true;
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
     }
-  }
-  const sc = Math.max(1, Math.round(t * Math.max(0.25, di)));
-  return { ticks: sc, gaps: gs.slice(0, Math.max(0, sc - 1)) };
+  };
+
+  const promise = new Promise<void>((resolve) => {
+    // Fire first toggle synchronously for user-gesture context
+    const firstPhase = phases[0];
+    let firstFired = false;
+    if (firstPhase.isOn) {
+      pool.fire();
+      onTick?.(firstPhase.intensity);
+      firstFired = true;
+    }
+
+    let startTime = 0;
+    let lastToggleTime = -1;
+
+    const loop = (time: number) => {
+      if (cancelled) {
+        resolve();
+        return;
+      }
+
+      if (startTime === 0) {
+        startTime = time;
+        if (firstFired) lastToggleTime = time;
+      }
+      const elapsed = time - startTime;
+
+      if (elapsed >= total) {
+        rafId = null;
+        resolve();
+        return;
+      }
+
+      // Find current phase
+      let phase = phases[0];
+      for (const p of phases) {
+        if (elapsed < p.end) {
+          phase = p;
+          break;
+        }
+      }
+
+      if (phase.isOn) {
+        const interval = toggleInterval(phase.intensity);
+        if (lastToggleTime === -1) {
+          // First toggle in a new on-phase
+          pool.fire();
+          onTick?.(phase.intensity);
+          lastToggleTime = time;
+        } else if (time - lastToggleTime >= interval) {
+          pool.fire();
+          onTick?.(phase.intensity);
+          lastToggleTime = time;
+        }
+      } else {
+        // Reset so next on-phase fires immediately
+        lastToggleTime = -1;
+      }
+
+      rafId = requestAnimationFrame(loop);
+    };
+
+    rafId = requestAnimationFrame(loop);
+  });
+
+  return { promise, cancel };
 }

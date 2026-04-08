@@ -75,8 +75,8 @@ For rich, characterful interactions.
 | Preset | Description | Impulse | iOS Ticks |
 |--------|------------|---------|-----------|
 | `nudge` | Two quick taps | `tap` | 2 |
-| `buzz` | Sustained vibration | `buzz` | 3 |
-| `heartbeat` | Heartbeat rhythm | `thud` | 2 |
+| `buzz` | Sustained vibration | `buzz` | 8 |
+| `heartbeat` | Heartbeat rhythm | `thud` | 4 |
 | `spring` | Bouncy pulses | `tap` | 4 |
 | `rampUp` | Escalating intensity | `tap` | 3 |
 | `rampDown` | Decreasing intensity | `tap` | 3 |
