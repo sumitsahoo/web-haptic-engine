@@ -64,7 +64,7 @@ const engine = new HapticEngine({ audioLayer: true });
 
 ## Audio Impulse Types
 
-All platforms support the audio layer. These 8 impulse types are synthesized at runtime using Web Audio. The audio layer tracks all active sources (both single-fire and sequenced) for proper cancellation with a short gain ramp-down to prevent click/pop artifacts:
+All platforms support the audio layer. These 8 impulse types are synthesized at runtime using Web Audio. Each impulse buffer is peak-normalized with a fade-out tail for clean looping on sustained segments. The audio layer tracks all active sources (both single-fire and sequenced) for proper cancellation with a short gain ramp-down to prevent click/pop artifacts. On iOS, the AudioContext automatically recovers from system interruptions (phone calls, Siri):
 
 | Impulse   | Frequency | Character              |
 | --------- | --------- | ---------------------- |

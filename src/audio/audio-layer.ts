@@ -40,7 +40,10 @@ export class AudioImpulseLayer {
       this.ctx = new AudioContext();
       this.lib = new ImpulseLibrary(this.ctx);
     }
-    if (this.ctx.state === "suspended") void this.ctx.resume();
+    // "suspended" is the normal blocked state; "interrupted" occurs on iOS
+    // when the system takes over audio (phone call, Siri, etc.)
+    if (this.ctx.state === "suspended" || this.ctx.state === ("interrupted" as AudioContextState))
+      void this.ctx.resume();
     return this.ctx;
   }
 
@@ -149,15 +152,23 @@ export class AudioImpulseLayer {
         gain.gain.setValueAtTime(gain.gain.value, ct);
         gain.gain.linearRampToValueAtTime(0, ct + 0.005);
         src.stop(ct + 0.006);
+        // Defer disconnect until the source actually ends (after the ramp)
+        src.onended = () => {
+          try {
+            src.disconnect();
+            gain.disconnect();
+          } catch {}
+        };
       } catch {
+        // Fallback: immediate stop + disconnect if scheduling fails
         try {
           src.stop();
         } catch {}
+        try {
+          src.disconnect();
+          gain.disconnect();
+        } catch {}
       }
-      try {
-        src.disconnect();
-        gain.disconnect();
-      } catch {}
     }
     this.activeSources = [];
   }
